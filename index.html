@@ -370,7 +370,7 @@ table.res.small td{padding:6px}
     </section>
 
     <aside class="panel" aria-labelledby="queueH">
-      <div class="section-h" style="margin:0"><h2 id="queueH">Queue</h2><span id="queueCount"></span></div>
+      <div class="section-h" style="margin:0"><h2 id="queueH">Player List</h2><span id="queueCount"></span></div>
       <form class="add" id="addForm" autocomplete="off">
         <input type="text" id="nameInput" maxlength="30" placeholder="Your name" aria-label="Your name">
         <button type="submit" class="btn-sun">Join</button>
@@ -391,6 +391,7 @@ table.res.small td{padding:6px}
   <footer class="app-foot"><a href="help.html">Help</a> · <a href="https://github.com/cespartero/simpletourneymgr" target="_blank" rel="noopener">Source code on GitHub</a></footer>
 </div>
 
+<div id="bigView" hidden></div>
 <div id="modalRoot"></div>
 
 <script>
@@ -428,7 +429,7 @@ table.res.small td{padding:6px}
       .sort((a, b) => a[1].since - b[1].since)
       .map(([id]) => id);
   }
-  // Players who are sitting out keep their place in the queue but are skipped for allocation.
+  // Players who are sitting out keep their place in the player list but are skipped for allocation.
   const eligible = (s) => waiting(s).filter(id => !s.players[id].sitOut);
   function pickFour(s) {
     const q = eligible(s), P = s.players, picks = [];
@@ -615,6 +616,7 @@ table.res.small td{padding:6px}
   // "Round 3 of 5": the total is the next round where everyone has played the same number of games.
   function udRoundOf(s) {
     const ud = s.session.ud, cy = udCycle(Object.keys(s.players).length, ud.per * 4);
+    if (ud.target) return ud.round > ud.target ? `Round ${ud.round} (${ud.target} planned)` : `Round ${ud.round} of ${ud.target}`;
     if (!cy.sit) return `Round ${ud.round}`;
     return `Round ${ud.round} of ${Math.ceil(ud.round / cy.rounds) * cy.rounds}`;
   }
@@ -711,7 +713,7 @@ table.res.small td{padding:6px}
     const hasPin = !!settings.pinHash;
     modal(`
       <h3>${hasPin ? "Admin PIN" : "Set admin PIN"}</h3>
-      <p>${hasPin ? esc(reason) : "Choose a PIN for starting sessions and managing the queue. You'll need it on every device."}</p>
+      <p>${hasPin ? esc(reason) : "Choose a PIN for starting sessions and managing the player list. You'll need it on every device."}</p>
       <form id="pinForm" style="display:flex;flex-direction:column;gap:10px">
         <label>PIN<input type="password" id="pin1" inputmode="numeric" minlength="4" maxlength="12" autocomplete="off"></label>
         ${hasPin ? "" : `<label>Repeat PIN<input type="password" id="pin2" inputmode="numeric" maxlength="12" autocomplete="off"></label>`}
@@ -751,7 +753,7 @@ table.res.small td{padding:6px}
     });
     if (closed) { err.textContent = "Entries are closed while the tournament is running."; err.hidden = false; return; }
     if (dup) { err.textContent = `${name} is already on the board. Add a surname initial to tell people apart.`; err.hidden = false; return; }
-    if (ok) { $("nameInput").value = ""; toast(`${name} joined the queue`); }
+    if (ok) { $("nameInput").value = ""; toast(`${name} joined the player list`); }
   }
 
   async function courtFree(num, winner, sa, sb) {
@@ -813,7 +815,7 @@ table.res.small td{padding:6px}
 
   function manualAllocate(num) {
     const q = eligible(state);
-    if (q.length < 4) return toast("A court needs 4 players waiting in the queue who aren't sitting out.");
+    if (q.length < 4) return toast("A court needs 4 players waiting in the player list who aren't sitting out.");
     const sug = pickFour(state), pre = sug ? [...sug.teamA, ...sug.teamB] : q.slice(0, 4);
     const label = { new: "New", winner: "Winner", grinner: "Grinner" };
     const opts = (sel) => `<option value="">Choose a player</option>` + q.map(id => {
@@ -900,6 +902,9 @@ table.res.small td{padding:6px}
     });
     upd(c.teamA, aWon, sa, sb); upd(c.teamB, !aWon, sb, sa);
     c.done = { winner, ...(draw ? { draw: true } : {}), ...(scored ? { scoreA: sa, scoreB: sb } : {}) };
+    // Match history: names are kept (not ids) so the record still reads right after the session ends.
+    const hn = (ids) => ids.map(id => s.players[id]?.name || "?");
+    (s.session.history = s.session.history || []).push({ r: ud.round, c: c.num, a: hn(c.teamA), b: hn(c.teamB), w: winner, ...(draw ? { d: 1 } : {}), ...(scored ? { sa, sb } : {}), t: endAt });
     c.lastMatchMs = ud.startAt ? Math.max(0, endAt - ud.startAt) : null;
   }
   function udFinishIfDone(s) {
@@ -1037,17 +1042,21 @@ table.res.small td{padding:6px}
     if (ok) toast(paused ? "Round paused" : "Round resumed");
   }
 
-  // Everyone is level: check the admin really wants another round, and say when games are next level.
-  // Only asked when people sit out; with no sit-outs, games are level after every round.
+  // Before starting a round, check with the admin when the planned rounds are done,
+  // or when everyone is level in a session where players sit out.
   function confirmStartUD(btn) {
     const s = state;
     if (!isUD(s) || s.session.ud.state !== "ready") return;
     const ud = s.session.ud, lv = udLevel(s);
-    if (!(lv.sit && lv.evenNow)) { btn.disabled = true; return startUDRound(); }
+    const level = lv.sit && lv.evenNow, planDone = !!ud.target && ud.completed >= ud.target;
+    if (!level && !planDone) { btn.disabled = true; return startUDRound(); }
+    const why = [];
+    if (planDone) why.push(`You planned <strong>${ud.target} ${ud.target === 1 ? "round" : "rounds"}</strong>, and ${ud.completed === ud.target ? "all of them have" : `${ud.completed} have`} been played.`);
+    if (level) why.push(`Everyone has played the same number of games at this round: <strong>${lv.games} ${lv.games === 1 ? "game" : "games"} each</strong> after round ${ud.completed}.`);
     modal(`
       <h3>Play another round?</h3>
-      <p>Everyone has played the same number of games at this round: <strong>${lv.games} ${lv.games === 1 ? "game" : "games"} each</strong> after round ${ud.completed}. Are you sure you want to play another round?</p>
-      <p>The next round where everyone will have played the same number of games is <strong>round ${lv.next}</strong>${lv.next - ud.completed > 1 ? `, ${lv.next - ud.completed} rounds from now` : ""}.</p>
+      <p>${why.join(" ")} Are you sure you want to play another round?</p>
+      ${lv.sit ? `<p>The next round where everyone will have played the same number of games is <strong>round ${lv.next}</strong>${lv.next - ud.completed > 1 ? `, ${lv.next - ud.completed} rounds from now` : ""}.</p>` : ""}
       <div style="display:flex;flex-direction:column;gap:8px">
         <button type="button" class="btn-sun" id="lvGo">Yes, play round ${ud.round}</button>
         <button type="button" class="btn-danger" id="lvEnd">End session instead</button>
@@ -1073,7 +1082,7 @@ table.res.small td{padding:6px}
   }
   async function startUpDown(n, timed, seconds) {
     const ids = waiting(state);
-    if (ids.length < 4) return toast("Up and down needs at least 4 players in the queue.");
+    if (ids.length < 4) return toast("Up and down needs at least 4 players in the player list.");
     let changed = false;
     const ok = await mutate((s, now) => {
       if (waiting(s).join() !== ids.join() || Object.keys(s.players).length !== ids.length) { changed = true; return false; }
@@ -1081,13 +1090,14 @@ table.res.small td{padding:6px}
       s.session = { mode: "ud", startedAt: now, courts: emptyCourts(n) };
       Object.values(s.players).forEach(p => { delete p.sitOut; delete p.court; delete p.last; delete p.c1; delete p.hist; p.status = "ud"; p.games = 0; p.wins = 0; p.pf = 0; p.pa = 0; p.top = 0; });
       udInitial(s, ids, timed, seconds);
+      if (pendingTarget) s.session.ud.target = pendingTarget;
     });
     if (changed) toast("Someone joined or left while the courts were being set. Start again.");
     else if (ok) toast("Up and down started. Press Start round 1 when everyone is on court.");
   }
 
   const emptyCourts = (n) => Array.from({ length: n }, (_, i) => ({ num: i + 1, teamA: null, teamB: null, startedAt: null }));
-  // ---------- round estimator (queue panel, before a session) ----------
+  // ---------- round estimator (player list panel, before a session) ----------
   // Aims for a session of 5 to 12 rounds that ends with everyone on the same number of games.
   const MIN_R = 5, MAX_R = 12;
   function roundPlanHtml(qn, courts) {
@@ -1119,6 +1129,8 @@ table.res.small td{padding:6px}
   }
   // Chosen on this device only; null means "follow the suggestion" or "use the saved round time".
   let estRounds = null, estSecs = null;
+  // Rounds picked in the Start screen; pendingTarget carries the choice into the new session.
+  let startRounds = null, pendingTarget = null;
   const SETUP_SECS = 10;
   const fmtTotal = (sec) => { const m = Math.ceil(sec / 60); return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`; };
   function timeEstimate(qn, courts) {
@@ -1193,42 +1205,56 @@ table.res.small td{padding:6px}
               <label>Seconds<input type="number" id="udSeconds" min="0" max="59" step="5" inputmode="numeric" value="${(settings.udSeconds || 0) % 60}"></label>
             </div>
           </fieldset>
+          <fieldset class="modes" id="udRoundsOpts" hidden><legend>Rounds to play</legend><div id="udRoundsBox"></div></fieldset>
           <label ${ONLY_UD ? "hidden" : ""}>Courts available<input type="number" id="courtCount" min="1" max="12" value="${def}"></label>
           <p class="note" id="modeNote"></p>
           <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun" id="startGo">Start session</button></div>
         </form>`, (close) => {
         const form = $("startForm");
+        startRounds = null;
+        // Rounds picker: suggested rounds (where games come out level) are one tap away; any number 1 to 30 can be picked.
+        const drawStartRounds = () => {
+          const qn0 = waiting(state).length, c0 = Math.max(1, Math.min(12, parseInt($("courtCount").value, 10) || def));
+          const sug = suggestedRounds(qn0, c0);
+          if (startRounds == null) startRounds = estRounds != null ? estRounds : (sug.list[0] || 8);
+          const r = startRounds, uneven = qn0 >= 4 && sug.cycle > 1 && r % sug.cycle !== 0;
+          $("udRoundsBox").innerHTML = `<div class="te-row"><div class="arr-ctl"><button type="button" data-sr-step="-1" aria-label="One round fewer">\u2212</button><b>${r}</b><span>${r === 1 ? "round" : "rounds"}</span><button type="button" data-sr-step="1" aria-label="One round more">+</button></div>${sug.list.length ? `<div class="te-chips" role="group" aria-label="Suggested rounds">${sug.list.map(x => `<button type="button" data-sr-pick="${x}" class="${x === r ? "on" : ""}" aria-pressed="${x === r}">${x}</button>`).join("")}</div>` : ""}</div>
+            <p class="note" style="margin-top:6px">${uneven ? `<span class="te-warn">With ${r} rounds, some players will have played one game fewer. Games are level every ${sug.cycle} rounds.</span> ` : ""}After round ${r}, the app asks before playing another round.</p>`;
+          $("udRoundsBox").querySelectorAll("[data-sr-step]").forEach(b => b.addEventListener("click", () => { startRounds = Math.max(1, Math.min(30, startRounds + +b.dataset.srStep)); drawStartRounds(); }));
+          $("udRoundsBox").querySelectorAll("[data-sr-pick]").forEach(b => b.addEventListener("click", () => { startRounds = +b.dataset.srPick; drawStartRounds(); }));
+        };
         const note = () => {
           const rr = form.mode.value === "rr", ud = form.mode.value === "ud";
           const courts = Math.max(1, Math.min(12, parseInt($("courtCount").value, 10) || def));
           $("udOpts").hidden = !ud;
           $("udMinWrap").hidden = !(ud && form.timing.value === "timed");
+          $("udRoundsOpts").hidden = !ud; if (ud) drawStartRounds();
           if (ud) {
             $("startGo").textContent = "Start tournament";
             const qn = waiting(state).length;
             if (qn < 4 || qn !== count) {
-              $("modeNote").textContent = qn < 4 ? `${qn} ${qn === 1 ? "player is" : "players are"} in the queue. Up and down needs at least 4, so add everyone first.` : "Some players are still on court. Wait until every court is free.";
+              $("modeNote").textContent = qn < 4 ? `${qn} ${qn === 1 ? "player is" : "players are"} in the player list. Up and down needs at least 4, so add everyone first.` : "Some players are still on court. Wait until every court is free.";
               $("startGo").disabled = true; return;
             }
             const used = Math.min(courts, Math.floor(qn / 4)), sit = qn - used * 4;
             const cy = udCycle(qn, used * 4);
             const evenTxt = sit ? ` ${sit} sit out each round, taking turns. Everyone has played the same number of games after every ${cy.rounds} rounds (${cy.games} ${cy.games === 1 ? "game" : "games"} each), so plan for ${cy.rounds}, ${cy.rounds * 2} or ${cy.rounds * 3} rounds.` : " Everyone plays every round.";
-            $("modeNote").textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"}, placed in queue order from court 1. Check everyone is in: nobody can be added once it starts.${evenTxt}`;
+            $("modeNote").textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"}, placed in list order from court 1. Check everyone is in: nobody can be added once it starts.${evenTxt}`;
             // Suggest the fewest rounds that even out games, by trying fewer courts (more sit-outs).
             const fewestFor = (n, maxC) => { let b = null; for (let c = Math.min(maxC, Math.floor(n / 4)); c >= 1; c--) { const r = udCycle(n, c * 4).rounds; if (!b || r < b.rounds) b = { c, rounds: r, sit: n - c * 4 }; } return b; };
             const maxUseful = Math.floor(qn / 4), cs = (n) => `${n} ${n === 1 ? "court" : "courts"}`;
             if (courts > maxUseful) $("modeNote").textContent += ` Only ${cs(maxUseful)} can be filled with ${qn} players.`;
             $("startGo").disabled = false; return;
           }
-          if (!rr) { $("modeNote").textContent = "All courts fill from the queue straight away."; $("startGo").disabled = false; $("startGo").textContent = "Start session"; return; }
+          if (!rr) { $("modeNote").textContent = "All courts fill from the player list straight away."; $("startGo").disabled = false; $("startGo").textContent = "Start session"; return; }
           $("startGo").textContent = "Start tournament";
           if (count < 4) {
-            $("modeNote").textContent = `${count} ${count === 1 ? "player is" : "players are"} in the queue. A tournament needs at least 4, so add everyone first.`;
+            $("modeNote").textContent = `${count} ${count === 1 ? "player is" : "players are"} in the player list. A tournament needs at least 4, so add everyone first.`;
             $("startGo").disabled = true; return;
           }
           const used = Math.min(courts, Math.floor(count / 4));
           const sits = count > used * 4 ? ` ${count - used * 4} sit out each round, taking turns.` : "";
-          $("modeNote").textContent = `${count} players in the queue. Check everyone is in: nobody can be added once it starts. Each round uses ${used} ${used === 1 ? "court" : "courts"}.${sits}`;
+          $("modeNote").textContent = `${count} players in the player list. Check everyone is in: nobody can be added once it starts. Each round uses ${used} ${used === 1 ? "court" : "courts"}.${sits}`;
           $("startGo").disabled = false;
         };
         form.addEventListener("change", note); $("courtCount").addEventListener("input", note); note();
@@ -1237,6 +1263,7 @@ table.res.small td{padding:6px}
           const mode = form.mode.value;
           const n = Math.max(1, Math.min(12, parseInt($("courtCount").value, 10) || def));
           const timed = form.timing.value === "timed";
+          pendingTarget = form.mode.value === "ud" ? startRounds : null;
           const seconds = Math.max(10, Math.min(90 * 60, (parseInt($("udMinutes").value, 10) || 0) * 60 + Math.min(59, parseInt($("udSeconds").value, 10) || 0))) || 720;
           close();
           const patch = {};
@@ -1283,7 +1310,7 @@ table.res.small td{padding:6px}
     requirePin("Enter the admin PIN to end the session.", () => {
       modal(`
         <h3>End session</h3>
-        <p>This clears every court and the whole queue for the night. Everyone's win and loss record is saved as tonight's results. Games still on court aren't counted.</p>
+        <p>This clears every court and the whole player list for the night. Everyone's win and loss record is saved as tonight's results. Games still on court aren't counted.</p>
         <div class="row"><button type="button" data-close>Keep playing</button><button type="button" class="btn-danger" id="endGo">End session</button></div>`, (close) => {
         $("endGo").addEventListener("click", async () => {
           close();
@@ -1292,7 +1319,7 @@ table.res.small td{padding:6px}
               const rr = isRR(s), ud = isUD(s);
               const rows = Object.values(s.players).map(p => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, ...(ud ? { top: p.top || 0 } : {}) }));
               s.lastSummary = { mode: rr ? "rr" : ud ? "ud" : "std", startedAt: s.session.startedAt, endedAt: now, courts: s.session.courts.length, rows };
-              if (ud) Object.assign(s.lastSummary, { roundsDone: s.session.ud.completed || 0, scored: rows.some(r => r.pf || r.pa) });
+              if (ud) Object.assign(s.lastSummary, { roundsDone: s.session.ud.completed || 0, scored: rows.some(r => r.pf || r.pa), history: s.session.history || [], ...(s.session.ud.target ? { planned: s.session.ud.target } : {}) });
               if (rr) {
                 const R = s.session.rr.rounds;
                 Object.assign(s.lastSummary, { roundsDone: R.filter(r => r.status === "done").length, roundsTotal: R.length, scored: rows.some(r => r.pf || r.pa) });
@@ -1314,7 +1341,7 @@ table.res.small td{padding:6px}
       if (p.sitOut) delete p.sitOut; else p.sitOut = true;
       name = p.name; now = !!p.sitOut;
     });
-    if (ok) toast(now ? `${name} is sitting out and keeps their place` : `${name} is back in the queue`);
+    if (ok) toast(now ? `${name} is sitting out and keeps their place` : `${name} is back in the player list`);
     else render();
   }
 
@@ -1398,7 +1425,7 @@ table.res.small td{padding:6px}
     if (isTour(state)) return toast("Entries are closed while the tournament is running.");
     modal(`
       <h3>Add test players</h3>
-      <p>For testing only. Adds players named after an adjective and an animal, such as Brave Wombat, to the end of the queue. Words aren't repeated until all of them have been used.</p>
+      <p>For testing only. Adds players named after an adjective and an animal, such as Brave Wombat, to the end of the player list. Words aren't repeated until all of them have been used.</p>
       <form id="tpForm" style="display:flex;flex-direction:column;gap:10px">
         <label>How many (up to ${TEST_MAX})<input type="number" id="tpCount" min="1" max="${TEST_MAX}" value="12"></label>
         <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun">Add players</button></div>
@@ -1422,11 +1449,33 @@ table.res.small td{padding:6px}
     });
   }
 
+  // Puts everyone from the last ended session back on the player list, skipping names already there.
+  async function readdPlayers() {
+    if (isTour(state)) return toast("Entries are closed while the tournament is running.");
+    let added = 0, skipped = 0;
+    const ok = await mutate((s, now) => {
+      added = 0; skipped = 0;
+      const rows = (s.lastSummary && s.lastSummary.rows) || [];
+      const taken = new Set(Object.values(s.players).map(p => p.name.toLowerCase()));
+      rows.forEach((r, i) => {
+        const k = r.name.toLowerCase();
+        if (taken.has(k)) { skipped++; return; }
+        taken.add(k);
+        const id = "p" + (now + i).toString(36) + Math.random().toString(36).slice(2, 6);
+        s.players[id] = { name: r.name, status: "new", since: now + i, games: 0, wins: 0 };
+        added++;
+      });
+      if (!added) return false;
+    });
+    if (ok) toast(`Added ${added} ${added === 1 ? "player" : "players"} from the last session${skipped ? `. ${skipped} ${skipped === 1 ? "was" : "were"} already on the list` : ""}`);
+    else if (skipped) toast("Everyone from the last session is already on the player list");
+  }
+
   function fullReset() {
     requirePin("Enter the admin PIN to reset the board.", () => {
       modal(`
         <h3>Full reset</h3>
-        <p>This puts the board back to how it was on day one: no session, an empty queue, no saved results, the court count back to 4, and no admin PIN. The next person to tap Admin sets a new PIN. This can't be undone.</p>
+        <p>This puts the board back to how it was on day one: no session, an empty player list, no saved results, the court count back to 4, and no admin PIN. The next person to tap Admin sets a new PIN. This can't be undone.</p>
         <form id="rsForm" style="display:flex;flex-direction:column;gap:10px">
           <label>Type RESET to confirm<input type="text" id="rsWord" autocomplete="off" autocapitalize="characters"></label>
           <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-danger" id="rsGo" disabled>Reset everything</button></div>
@@ -1457,7 +1506,7 @@ table.res.small td{padding:6px}
   function overrideReset() {
     modal(`
       <h3>Override reset</h3>
-      <p>Forgotten the admin PIN? The app owner can reset the board with the override PIN. This clears everything, the same as a full reset: the session, the queue, saved results, the court layout and the admin PIN. The next person to tap Admin sets a new PIN. This can't be undone.</p>
+      <p>Forgotten the admin PIN? The app owner can reset the board with the override PIN. This clears everything, the same as a full reset: the session, the player list, saved results, the court layout and the admin PIN. The next person to tap Admin sets a new PIN. This can't be undone.</p>
       <form id="ovForm" style="display:flex;flex-direction:column;gap:10px">
         <label>Override PIN<input type="password" id="ovPin" inputmode="numeric" maxlength="20" autocomplete="off"></label>
         <label>Type RESET to confirm<input type="text" id="ovWord" autocomplete="off" autocapitalize="characters"></label>
@@ -1486,11 +1535,12 @@ table.res.small td{padding:6px}
       const live = !!state.session;
       modal(`
         <h3>Admin</h3>
-        <p>Unlocked on this device for 30 minutes. In the queue you can now drag players up or down, change anyone's status and remove players.</p>
+        <p>Unlocked on this device for 30 minutes. In the player list you can now drag players up or down, change anyone's status and remove players.</p>
         <div style="display:flex;flex-direction:column;gap:8px">
           ${live ? `<button type="button" id="aEnd" class="btn-danger">End session</button>` : `<button type="button" id="aStart" class="btn-sun">Start new session</button>`}
           <button type="button" id="aArr">Arrange courts</button>
           <button type="button" id="aTest">Add test players</button>
+          ${!live && state.lastSummary && state.lastSummary.rows && state.lastSummary.rows.length ? `<button type="button" id="aReadd">Re-add last session's players (${state.lastSummary.rows.length})</button>` : ""}
           ${window.__localEdition ? `<button type="button" id="aBackup">Download backup</button><button type="button" id="aRestore">Restore backup</button><input type="file" id="aRestoreFile" accept=".json,application/json" hidden>` : ""}
           <button type="button" id="aPin">Change PIN</button>
           <button type="button" id="aLock">Lock admin</button>
@@ -1510,6 +1560,7 @@ table.res.small td{padding:6px}
           });
         }
         $("aTest").addEventListener("click", () => { close(); testPlayers(); });
+        $("aReadd") && $("aReadd").addEventListener("click", () => { close(); readdPlayers(); });
         $("aArr").addEventListener("click", () => { close(); arranging = true; selCourt = null; render(); });
         $("aReset").addEventListener("click", () => { close(); fullReset(); });
       });
@@ -1640,6 +1691,19 @@ table.res.small td{padding:6px}
   }
   const lostOf = (r) => r.games - r.wins - (r.draws || 0);
   const diffTxt = (r) => { const d = (r.pf || 0) - (r.pa || 0); return d > 0 ? "+" + d : d < 0 ? "−" + Math.abs(d) : "0"; };
+  const avgPts = (r) => r.games ? ((r.pf || 0) / r.games).toFixed(1) : "–";
+  // Match history as table parts (caption, head, body), newest first.
+  function histTableHtml(list) {
+    const h = (list || []).slice().reverse();
+    if (!h.length) return `<caption class="sk-cap">No matches recorded yet. Each result shows here as it's saved.</caption>`;
+    return `<caption class="sk-cap">${h.length} ${h.length === 1 ? "match" : "matches"} recorded, newest first.</caption>
+      <thead><tr><th class="hist-h">Rd</th><th class="hist-h">Ct</th><th class="hist-h">Winners</th><th class="hist-h" style="text-align:center">Score</th><th class="hist-h">Other team</th></tr></thead>
+      <tbody>${h.map(m => {
+        const aw = m.w === "A", W = aw ? m.a : m.b, L = aw ? m.b : m.a;
+        const score = m.sa != null ? `${aw ? m.sa : m.sb}\u2013${aw ? m.sb : m.sa}` : "";
+        return `<tr><td>${m.r}</td><td>${m.c}</td><td class="hist-t${m.d ? "" : " hist-w"}">${esc(W.join(" & "))}${m.d ? '<div class="lr-time">Moved up on a draw</div>' : ""}</td><td class="hist-s">${m.d ? `Draw${score ? " " + score : ""}` : score || "Won"}</td><td class="hist-t">${esc(L.join(" & "))}</td></tr>`;
+      }).join("")}</tbody>`;
+  }
   const pct = (r) => r.games ? Math.round(100 * r.wins / r.games) + "%" : "–";
   function sumDate(sum) {
     const d = new Date(sum.startedAt);
@@ -1658,10 +1722,11 @@ table.res.small td{padding:6px}
         <div class="court-time">${esc(sumDate(sum))} · ${rows.length} players · ${totalGames} games${extra} · ${sum.courts} courts · ${dur}</div></div>
         <div class="row" style="flex:none"><button id="copyRes">Copy results</button></div></div>
       <div class="tbl-wrap"><table class="res">
-        <thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${pts ? "<th>Points</th><th>+/−</th>" : ""}${top ? "<th>Court 1 wins</th>" : ""}<th>Win %</th></tr></thead>
-        <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws || 0}</td>` : ""}<td>${lostOf(r)}</td>${pts ? `<td>${r.pf || 0}–${r.pa || 0}</td><td>${diffTxt(r)}</td>` : ""}${top ? `<td>${r.top || 0}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>
+        <thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${pts ? "<th>Points</th><th>+/−</th><th title=\"Average points scored per game\">Avg pts</th>" : ""}${top ? "<th>Court 1 wins</th>" : ""}<th>Win %</th></tr></thead>
+        <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws || 0}</td>` : ""}<td>${lostOf(r)}</td>${pts ? `<td>${r.pf || 0}–${r.pa || 0}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}${top ? `<td>${r.top || 0}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>
       </table></div>
       ${rr ? `<p class="note">Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${pts ? ", then points difference, then points scored" : ""}.</p>` : ""}
+      ${sum.history && sum.history.length ? `<details class="hist-wrap"><summary>Match history (${sum.history.length} ${sum.history.length === 1 ? "match" : "matches"})</summary><div class="tbl-wrap"><table class="res small">${histTableHtml(sum.history)}</table></div></details>` : ""}
       <textarea id="copyFallback" readonly hidden></textarea>
     </div>`;
   }
@@ -1706,13 +1771,26 @@ table.res.small td{padding:6px}
   let qdrag = null, qFocus = null;
   // "Timer only" view is a per-device choice, so it lives in this browser only.
   let timerOnly = false;
+  // Full-screen courts or stats view, this device only ("courts", "stats" or null).
+  let bigView = null;
   try { timerOnly = localStorage.getItem("suns-timer-only") === "1"; } catch {}
   function setTimerOnly(on) {
+    if (on) bigView = null;
     timerOnly = on;
     try { localStorage.setItem("suns-timer-only", on ? "1" : "0"); } catch {}
     try {
       if (on && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
       if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    } catch {}
+    render();
+    window.scrollTo(0, 0);
+  }
+  function setBigView(v) {
+    bigView = v;
+    if (v && timerOnly) { timerOnly = false; try { localStorage.setItem("suns-timer-only", "0"); } catch {} }
+    try {
+      if (v && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      if (!v && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
     } catch {}
     render();
     window.scrollTo(0, 0);
@@ -1849,21 +1927,50 @@ table.res.small td{padding:6px}
     const where = {};
     s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
     const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, pf: p.pf || 0, pa: p.pa || 0, top: p.top || 0, draws: p.draws || 0, court: where[id] || null, last: p.last || null, hist: p.hist || [], c1: p.c1 || 0 })) });
-    const page = ["stats", "streaks"].includes(standingsPage) ? standingsPage : "alloc";
+    const page = ["stats", "streaks", "history"].includes(standingsPage) ? standingsPage : "alloc";
     const tabs = `<div class="sp-tabs" role="tablist" aria-label="Standings pages">
         <button type="button" role="tab" data-sp="alloc" aria-selected="${page === "alloc"}" class="${page === "alloc" ? "on" : ""}">Allocations</button>
         <button type="button" role="tab" data-sp="stats" aria-selected="${page === "stats"}" class="${page === "stats" ? "on" : ""}">Stats</button>
         <button type="button" role="tab" data-sp="streaks" aria-selected="${page === "streaks"}" class="${page === "streaks" ? "on" : ""}">Streaks</button>
+        <button type="button" role="tab" data-sp="history" aria-selected="${page === "history"}" class="${page === "history" ? "on" : ""}">History</button>
       </div>`;
-    const body = page === "streaks" ? streaksHtml(rows) : page === "alloc"
+    const body = page === "history" ? histTableHtml(s.session.history) : page === "streaks" ? streaksHtml(rows) : page === "alloc"
       ? `<thead><tr><th>#</th><th>Player</th><th>Round ${ud.round}</th><th>Last round</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td class="rd">${r.court ? `<span class="status s-new">Allocated · Ct ${r.court}</span>` : `<span class="status s-sit">Sit out</span>`}</td><td class="lr">${lastTxt(r)}</td></tr>`).join("")}</tbody>`
-      : `<thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${rows.some(r => r.draws) ? "<th>Drawn</th>" : ""}<th>Lost</th><th>Pts won</th><th>Pts lost</th><th>+/−</th><th>Win %</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${rows.some(x => x.draws) ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td><td>${r.pf}</td><td>${r.pa}</td><td>${diffTxt(r)}</td><td>${pct(r)}</td></tr>`).join("")}</tbody>`;
+      : `<thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${rows.some(r => r.draws) ? "<th>Drawn</th>" : ""}<th>Lost</th><th>Pts won</th><th>Pts lost</th><th>+/−</th><th title="Average points scored per game">Avg pts</th><th>Win %</th></tr></thead>
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${rows.some(x => x.draws) ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td><td>${r.pf}</td><td>${r.pa}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td><td>${pct(r)}</td></tr>`).join("")}</tbody>`;
     html += `<div class="rr-block"><div class="sp-head"><div class="rr-h">Standings</div>${tabs}</div><div class="tbl-wrap"><table class="res small">
       ${body}
     </table></div></div>`;
     return html;
+  }
+
+  // Full screen courts: every court in the Arrange courts layout, with team names large enough to read across the hall.
+  function bigCourtsHtml(s) {
+    const ud = s.session.ud, lv = udLevel(s), L = currentLayout(), nm = (ids) => ids.map(id => esc(s.players[id]?.name || "?")).join(" & ");
+    const t = udParts(ud, Date.now());
+    const clock = ud.state === "playing" ? `<div class="udbig${t.up ? " up" : ""}${t.paused ? " paused" : ""}" role="timer"><span class="udlbl">${t.label}</span><span class="udnum">${t.value}</span></div>` : `<div class="bv-ready">Get ready</div>`;
+    const cards = s.session.courts.map(c => {
+      const pos = L.pos[c.num], at = pos ? ` style="grid-row:${pos[0] + 1};grid-column:${pos[1] + 1}"` : "";
+      if (!c.teamA) return `<div class="bv-court off"${at}><div class="bv-num">Court ${c.num}</div><div class="bv-off">Not used</div></div>`;
+      const d = c.done, res = d ? `<div class="bv-res">${d.draw ? "Draw" : "Finished"}${d.scoreA != null ? ` ${d.scoreA}–${d.scoreB}` : ""}</div>` : "";
+      const tA = d ? (d.winner === "A" ? " won" : " lost") : "", tB = d ? (d.winner === "B" ? " won" : " lost") : "";
+      return `<div class="bv-court${d ? " done" : ""}"${at}><div class="bv-num">Court ${c.num}</div><div class="bv-team${tA}">${nm(c.teamA)}</div><div class="bv-vs">vs</div><div class="bv-team${tB}">${nm(c.teamB)}</div>${res}</div>`;
+    }).join("");
+    return `<div class="bv-head"><div class="bv-hl"><div class="bv-title">${udRoundOf(s)}</div>${lv.sit ? `<span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : ""}</div>${clock}<div class="bv-btns"><button type="button" data-bv="stats">Full screen stats</button><button type="button" class="btn-sun" data-bv="">Exit full screen</button></div></div>
+      <div class="bv-grid" style="grid-template-columns:repeat(${L.cols},minmax(0,1fr))">${cards}</div>
+      ${ud.sitting.length ? `<div class="bv-sit">Sitting out this round: <strong>${ud.sitting.map(id => esc(s.players[id]?.name || "?")).join(", ")}</strong></div>` : ""}`;
+  }
+  // Full screen stats: the tournament leaderboard so far.
+  function bigStatsHtml(s) {
+    const ud = s.session.ud, scored = typeof udScored === "function" ? udScored(s) : true;
+    const rows = rankRows({ mode: "ud", rows: Object.values(s.players).map(p => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, hist: p.hist || [] })) });
+    const dr = rows.some(r => r.draws);
+    const streak = (h) => { const st = streakOf(h); return st.n >= 2 ? `${st.n} ${st.kind === "W" ? "wins" : st.kind === "L" ? "losses" : "draws"}` : "–"; };
+    return `<div class="bv-head"><div class="bv-hl"><div class="bv-title">Leaderboard</div><span class="bv-subt">${udRoundOf(s)} · ${ud.completed} ${ud.completed === 1 ? "round" : "rounds"} played</span></div><div class="bv-btns"><button type="button" data-bv="courts">Full screen courts</button><button type="button" class="btn-sun" data-bv="">Exit full screen</button></div></div>
+      <div class="tbl-wrap"><table class="res bv-table"><thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${scored ? "<th>+/−</th><th>Avg pts</th>" : ""}<th>Win %</th><th>Streak</th></tr></thead>
+      <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scored ? `<td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td><td>${streak(r.hist)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="note bv-note">Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${scored ? ", then points difference, then points scored" : ""}. Avg pts is points scored per game.</p>`;
   }
 
   function render() {
@@ -1913,7 +2020,8 @@ table.res.small td{padding:6px}
         rbar.hidden = false;
         if (ud.state === "ready") {
           const lv = udLevel(s);
-          const evenTxt = (ud.completed && even ? ` Everyone has played ${games[0]} ${games[0] === 1 ? "game" : "games"}, so this is a fair place to finish.` : "")
+          const planTxt = ud.target && ud.completed >= ud.target ? ` <b>All ${ud.target} planned rounds are done.</b>` : "";
+          const evenTxt = planTxt + (ud.completed && even ? ` Everyone has played ${games[0]} ${games[0] === 1 ? "game" : "games"}, so this is a fair place to finish.` : "")
             + (lv.sit ? ` <span class="lvl-tag">${ud.completed && even ? "Next level" : "Games level"} after round ${lv.next}</span>` : "");
           rbar.innerHTML = `<span><b>${udRoundOf(s)} is set.</b> ${ud.timed ? "Timed round with a 10 second setup." : "Untimed round."}${evenTxt}</span>${ud.timed && canWrite ? `<div class="arr-ctl time-ctl"><span>Round time</span><input type="number" id="udTmMin" min="0" max="90" inputmode="numeric" aria-label="Minutes" value="${Math.floor(udSecs(ud) / 60)}"><span>min</span><input type="number" id="udTmSec" min="0" max="59" step="5" inputmode="numeric" aria-label="Seconds" value="${udSecs(ud) % 60}"><span>sec</span></div>` : ud.timed ? `<b>${fmtMS(udSecs(ud))}</b>` : ""}${canWrite ? `<button type="button" id="udShuffle">Shuffle courts</button><button class="btn-sun" id="udStart">Start round ${ud.round}</button>` : ""}`;
         } else {
@@ -1921,8 +2029,10 @@ table.res.small td{padding:6px}
           rbar.innerHTML = `<span><b>${udRoundOf(s)}</b>${ud.timed ? "" : ` \u00b7 ${done} of ${courtsIn.length} ${courtsIn.length === 1 ? "court" : "courts"} finished`}${lv.sit ? ` <span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : ""}</span>${(() => { const t = udParts(ud, Date.now()); return `<div class="udbig${t.up ? " up" : ""}${t.paused ? " paused" : ""}" role="timer"><span class="udlbl">${t.label}</span><span class="udnum">${t.value}</span></div>`; })()}${canWrite ? `<div class="ud-actions"><button type="button" id="udPause" class="${ud.pausedAt ? "btn-sun" : ""}"${pauseShown(udParts(ud, Date.now())) ? "" : " hidden"}>${ud.pausedAt ? "Resume" : "Pause"}</button>${ud.timed ? `<button class="btn-end ud-endround" id="udEndRound">End round</button>` : ""}</div>` : ""}`;
         }
         $("udStart") && $("udStart").addEventListener("click", (e) => confirmStartUD(e.currentTarget));
-      if (!rbar.querySelector("#udFocus")) rbar.insertAdjacentHTML("beforeend", `<button type="button" id="udFocus" class="btn-ghost ud-focus">${timerOnly ? "Show full board" : "Timer only"}</button>`);
+      if (!rbar.querySelector("#udFocus")) rbar.insertAdjacentHTML("beforeend", `<div class="fs-btns">${timerOnly ? "" : `<button type="button" id="fsCourts" class="btn-ghost">Full screen courts</button><button type="button" id="fsStats" class="btn-ghost">Full screen stats</button>`}<button type="button" id="udFocus" class="btn-ghost ud-focus">${timerOnly ? "Show full board" : "Full screen timer"}</button></div>`);
       $("udFocus").addEventListener("click", () => setTimerOnly(!timerOnly));
+      $("fsCourts") && $("fsCourts").addEventListener("click", () => setBigView("courts"));
+      $("fsStats") && $("fsStats").addEventListener("click", () => setBigView("stats"));
         $("udEndRound") && $("udEndRound").addEventListener("click", endRoundUD);
       $("udShuffle") && $("udShuffle").addEventListener("click", (e) => { e.currentTarget.disabled = true; shuffleUD(); });
       $("udPause") && $("udPause").addEventListener("click", (e) => { e.currentTarget.disabled = true; togglePause(); });
@@ -1952,7 +2062,7 @@ table.res.small td{padding:6px}
     } else if (!live) {
       box.innerHTML = `<div class="court-card" style="grid-column:1/-1">
         <p style="margin:0;font-weight:600">No session running.</p>
-        <p style="margin:0;color:var(--muted)">${ONLY_UD ? "Players add their names to the queue below. When everyone is in, the admin starts the up and down tournament. Players go onto courts in queue order from court 1." : "Players can join the queue now. When all courts are free, the admin starts the session and the first players go straight on."}</p>
+        <p style="margin:0;color:var(--muted)">${ONLY_UD ? "Players add their names to the player list below. When everyone is in, the admin starts the up and down tournament. Players go onto courts in list order from court 1." : "Players can join the player list now. When all courts are free, the admin starts the session and the first players go straight on."}</p>
         ${canWrite ? `<div class="row" style="flex:none;justify-content:flex-start"><button class="btn-sun" id="startBtn" style="flex:none">Start session</button>${s.lastSummary && s.lastSummary.rows ? (s.lastSummary.hidden ? `<button id="showRes" class="btn-ghost" style="flex:none">Show last results</button>` : `<button id="hideRes" class="btn-ghost" style="flex:none">Hide results</button>`) : ""}</div>` : ""}
       </div>${s.lastSummary && !s.lastSummary.hidden ? resultsHtml(s.lastSummary) : ""}`;
       $("hideRes") && $("hideRes").addEventListener("click", () => setResultsHidden(true));
@@ -2049,8 +2159,17 @@ table.res.small td{padding:6px}
       box.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => { freeingCourt = null; frozenAt = null; render(); }));
     }
 
+    // full screen courts or stats (this device only)
+    const bigOn = !!bigView && udLive && !arranging;
+    document.body.classList.toggle("big-view", bigOn);
+    $("bigView").hidden = !bigOn;
+    if (bigOn) {
+      $("bigView").innerHTML = bigView === "stats" ? bigStatsHtml(s) : bigCourtsHtml(s);
+      $("bigView").querySelectorAll("[data-bv]").forEach(b => b.addEventListener("click", () => setBigView(b.dataset.bv || null)));
+    }
+
     // tournament panel replaces the queue during a round robin
-    $("queueH").textContent = tour ? "Tournament" : "Queue";
+    $("queueH").textContent = tour ? "Tournament" : "Player List";
     $("legend").hidden = tour;
     $("rrPanel").hidden = !tour;
     if (tour) {
@@ -2106,7 +2225,7 @@ table.res.small td{padding:6px}
         ${admin ? `<select class="status status-sel s-${p.status}" data-st="${id}" aria-label="Status for ${esc(p.name)}">${["new", "winner", "grinner"].map(v => `<option value="${v}"${v === p.status ? " selected" : ""}>${{ new: "New", winner: "Winner", grinner: "Grinner" }[v]}</option>`).join("")}</select>` : `<span class="status s-${p.status}">${label}</span>`}
         <div class="acts">${canWrite ? `<button class="x ${p.sitOut ? "btn-back" : "btn-sun"}" data-sit="${id}" aria-pressed="${p.sitOut ? "true" : "false"}" aria-label="${p.sitOut ? "Bring back" : "Sit out"} ${esc(p.name)}">${p.sitOut ? "Back in" : "Sit out"}</button>` : ""}${admin ? `<button class="x btn-ghost" data-rm="${id}" aria-label="Remove ${esc(p.name)}">Remove</button>` : ""}</div></li>`;
     }).join("") : "";
-    if (!q.length) $("queue").innerHTML = `<li style="display:block;border:0"><p class="empty-q">${connected ? "Nobody waiting. Type your name above to join." : "Loading the queue…"}</p></li>`;
+    if (!q.length) $("queue").innerHTML = `<li style="display:block;border:0"><p class="empty-q">${connected ? "Nobody waiting. Type your name above to join." : "Loading the player list…"}</p></li>`;
     $("queue").classList.toggle("reorder", admin);
     bindQueueDrag(q);
     if (qFocus) { const g = $("queue").querySelector(`[data-drag="${qFocus}"]`); qFocus = null; g && g.focus(); }
@@ -2118,6 +2237,8 @@ table.res.small td{padding:6px}
   // ---------- wiring ----------
   $("addForm").addEventListener("submit", (e) => { e.preventDefault(); addPlayer($("nameInput").value); });
   $("adminBtn").addEventListener("click", adminMenu);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && bigView) setBigView(null); });
+  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && bigView) setBigView(null); });
   $("endBtn").addEventListener("click", endSession);
   $("cMinus").addEventListener("click", () => resizeLayout(-1, 0));
   $("cPlus").addEventListener("click", () => resizeLayout(1, 0));
@@ -2224,7 +2345,41 @@ table.res.small td{padding:6px}
   })();
 })();
 </script>
-<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.lvl-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;letter-spacing:.02em;padding:2px 9px;border-radius:999px;background:var(--new-bg);color:var(--new);border:1px solid var(--new);white-space:nowrap;vertical-align:1px}
+<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.fs-btns{display:flex;flex-wrap:wrap;gap:8px}
+body.big-view>.wrap,body.big-view #helpView{display:none!important}
+#bigView{min-height:100vh;box-sizing:border-box;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px;background:var(--bg)}
+.bv-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
+.bv-hl{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.bv-title{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(28px,4vw,56px);line-height:1}
+.bv-subt{color:var(--muted);font-weight:600;font-size:clamp(14px,1.6vw,20px)}
+.bv-head .udbig{flex:none;padding:0}
+.bv-head .udbig .udnum{font-size:clamp(48px,7vw,110px)}
+.bv-ready{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(28px,4vw,56px);color:var(--new)}
+.bv-btns{display:flex;flex-wrap:wrap;gap:8px}
+.bv-grid{display:grid;gap:14px;align-content:start}
+.bv-court{background:var(--court);color:var(--court-line);border:3px solid var(--court-line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;min-height:clamp(140px,22vh,320px);min-width:0}
+.bv-court.off{background:transparent;color:var(--muted);border:2px dashed var(--line)}
+.bv-num{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(22px,2.6vw,40px);letter-spacing:.02em}
+.bv-team{font-weight:700;font-size:clamp(18px,2.4vw,38px);line-height:1.15;overflow-wrap:anywhere}
+.bv-team.won{color:var(--sun)}
+.bv-team.lost{opacity:.7}
+.bv-vs{font-size:clamp(12px,1.2vw,18px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.bv-res{margin-top:4px;background:var(--surface);color:var(--ink);border-radius:8px;padding:2px 10px;font-weight:700;font-size:clamp(13px,1.4vw,20px)}
+.bv-off{font-weight:600}
+.bv-sit{font-size:clamp(15px,1.8vw,26px);color:var(--muted)}
+.bv-sit strong{color:var(--ink)}
+.bv-table{font-size:clamp(15px,1.8vw,28px)}
+.bv-table td,.bv-table th{padding:clamp(6px,1vh,14px) 10px}
+.bv-table th{font-size:clamp(11px,1.1vw,16px)}
+.bv-note{font-size:clamp(12px,1.2vw,16px)}
+.bv-table td:last-child{white-space:nowrap}
+@media (max-width:600px){.bv-grid{grid-template-columns:1fr!important}.bv-court{grid-row:auto!important;grid-column:auto!important}}
+.hist-wrap summary{cursor:pointer;font-weight:700;padding:6px 0}
+table.res th.hist-h{text-align:left;width:auto}
+table.res td.hist-t{text-align:left;white-space:normal;min-width:110px}
+table.res td.hist-t.hist-w{font-weight:700;color:var(--new)}
+table.res td.hist-s{text-align:center;white-space:nowrap;font-weight:700}
+.lvl-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;letter-spacing:.02em;padding:2px 9px;border-radius:999px;background:var(--new-bg);color:var(--new);border:1px solid var(--new);white-space:nowrap;vertical-align:1px}
 .lvl-tag.now{background:var(--new);color:var(--surface)}
 .te-block{display:flex;flex-direction:column;gap:10px;border-top:1px solid color-mix(in srgb,var(--new) 35%,transparent);padding-top:12px}
 .te-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}

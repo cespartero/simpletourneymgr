@@ -126,8 +126,8 @@ footer{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
   <section class="card" id="players">
     <h2>For players</h2>
     <ol>
-      <li>Type your name in the <b>Queue</b> box and tap <span class="k">Join</span>.</li>
-      <li>Wait for the admin to start. You'll be placed on a court in queue order, starting from court 1.</li>
+      <li>Type your name in the <b>Player List</b> box and tap <span class="k">Join</span>.</li>
+      <li>Wait for the admin to start. You'll be placed on a court in list order, starting from court 1.</li>
       <li>Check the board each round to see your court and partner.</li>
     </ol>
     <p class="note">Entries close once the tournament starts. Make sure everyone has joined first.</p>
@@ -136,7 +136,7 @@ footer{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
   <section class="card" id="start">
     <h2>Starting a tournament</h2>
     <ol>
-      <li>Get everyone into the queue. You need at least 4 players.</li>
+      <li>Get everyone onto the player list. You need at least 4 players.</li>
       <li>Tap <span class="k">Start session</span> and enter the admin PIN. The first time, you'll choose a PIN.</li>
       <li>Choose the <b>round timing</b>:
         <ul>
@@ -144,13 +144,14 @@ footer{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
           <li><b>Timed</b>: every round runs for a set time (minutes and seconds) after a 10 second setup.</li>
         </ul>
       </li>
+      <li>Choose the <b>rounds to play</b>. The suggested numbers, where everyone ends on the same number of games, are one tap away, but you can pick any number from 1 to 30. The round bar then shows, for example, <b>Round 3 of 8</b>.</li>
       <li>Check the summary. It tells you how many courts will be used and, if the numbers don't divide by 4, how many sit out each round.</li>
       <li>Tap <span class="k">Start up and down</span>, then <span class="k">Start round 1</span> once everyone is on court.</li>
     </ol>
     <h3>Odd numbers and sit-outs</h3>
     <p>Each court takes 4 players. Anyone left over sits out that round, and sit-outs take turns. The app tells you how many rounds it takes for everyone to have played the same number of games, so you can plan a fair finish.</p>
     <h3>How long will it take?</h3>
-    <p>Before you start, the <b>Time estimator</b> under the Round estimator in the queue panel works out roughly how long timed rounds will take. Pick the number of rounds (the suggested ones are one tap away) and the time per round. It shows the total, including the 10 second setup before each round, and about when you'd finish if you started now. Allow extra time between rounds for entering results and changing courts.</p>
+    <p>Before you start, the <b>Time estimator</b> under the Round estimator in the player list panel works out roughly how long timed rounds will take. Pick the number of rounds (the suggested ones are one tap away) and the time per round. It shows the total, including the 10 second setup before each round, and about when you'd finish if you started now. Allow extra time between rounds for entering results and changing courts.</p>
   </section>
 
   <section class="card" id="rounds">
@@ -164,14 +165,20 @@ footer{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
       <dd>Finishes the round early so you can enter results.</dd>
       <dt>Round time</dt>
       <dd>In timed mode, you can change the time for the next round before you start it.</dd>
+      <dt>Planned rounds</dt>
+      <dd>Once the planned number of rounds has been played, starting another round asks you first and offers to end the session instead.</dd>
       <dt>Level rounds</dt>
       <dd>When some players sit out each round, games only even out every few rounds. The round bar shows when everyone will next have played the same number of games, such as <b>Games level after round 10</b>. If everyone is level and you start another round, the app asks you to confirm first, tells you which round games will next be level, and offers to end the session instead.</dd>
       <dt>Shuffle courts</dt>
       <dd>Before a round starts, puts everyone due to play on a random court with random partners. Players due to sit out keep sitting out.</dd>
-      <dt>Timer only</dt>
+      <dt>Full screen courts</dt>
+      <dd>Shows every court in the layout set with <b>Arrange courts</b>, with team names large enough to read from across the hall, the round clock, and who is sitting out. It updates live as results come in.</dd>
+      <dt>Full screen stats</dt>
+      <dd>Shows the tournament leaderboard so far, large: wins, losses, points difference, average points per game, win percentage and current streaks.</dd>
+      <dt>Full screen timer</dt>
       <dd>Shows a large timer on its own, handy for a screen beside the courts. Tap <span class="k">Show full board</span> to go back.</dd>
     </dl>
-    <p class="note">On phones and tablets, tap the screen once before the round starts so the browser allows the beeps and voice to play.</p>
+    <p class="note">Full screen views are chosen per device, so a TV can show full screen courts while your phone shows the normal board. Press Esc or <b>Exit full screen</b> to leave courts or stats. On phones and tablets, tap the screen once before the round starts so the browser allows the beeps and voice to play.</p>
   </section>
 
   <section class="card" id="scores">
@@ -191,9 +198,11 @@ footer{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
       <dt>Allocations</dt>
       <dd>Who is on which court this round, who is sitting out, and where everyone played last round.</dd>
       <dt>Stats</dt>
-      <dd>Games played, won, drawn and lost, points won and lost, points difference and win percentage.</dd>
+      <dd>Games played, won, drawn and lost, points won and lost, points difference, average points per game (<b>Avg pts</b>) and win percentage.</dd>
       <dt>Streaks</dt>
       <dd>Each player's current streak, best winning run and last 5 results.</dd>
+      <dt>History</dt>
+      <dd>Every match recorded this session, newest first: round, court, both teams and the score. After the session ends it's kept under the final leaderboard, in <b>Match history</b>.</dd>
     </dl>
     <p style="margin-top:12px">When you end the session, the final results stay on the board. Use <span class="k">Copy results</span> to paste them into a message or post, and <span class="k">Show last results</span> to bring them back later.</p>
   </section>
@@ -202,14 +211,16 @@ footer{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
     <h2>Admin tools</h2>
     <p>Tap <span class="k">Admin</span> and enter the PIN. Admin stays unlocked for 30 minutes, then locks again on its own.</p>
     <dl>
-      <dt>Queue</dt>
-      <dd>Before the tournament, drag players to reorder the queue, use <span class="k">Sit out</span> and <span class="k">Back in</span>, or <span class="k">Remove</span> someone.</dd>
+      <dt>Player List</dt>
+      <dd>Before the tournament, drag players to reorder the player list, use <span class="k">Sit out</span> and <span class="k">Back in</span>, or <span class="k">Remove</span> someone.</dd>
       <dt>Arrange courts</dt>
       <dd>Set the number of columns and rows, then drag courts so the board matches the layout of your venue. Leave gaps for walkways.</dd>
       <dt>Change PIN</dt>
       <dd>Set a new admin PIN.</dd>
+      <dt>Re-add last session's players</dt>
+      <dd>Between sessions, puts everyone from the last session back on the player list in one tap. Anyone already on the list is skipped.</dd>
       <dt>Add test players</dt>
-      <dd>Fill the queue with sample names to try the app out.</dd>
+      <dd>Fill the player list with sample names to try the app out.</dd>
       <dt>Download backup and Restore backup</dt>
       <dd>Save the board to a file, or load one back in.</dd>
       <dt>Start new session</dt>
@@ -240,7 +251,7 @@ footer{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
       <dt>Why can't I start the next round?</dt>
       <dd>Every court needs a result first. Check for a court with no score, or a draw where nobody has been chosen to move up.</dd>
       <dt>I forgot the admin PIN.</dt>
-      <dd>Tap <span class="k">Admin</span>, then <b>Forgot the PIN?</b> under the PIN box. The app owner can enter their override PIN there to reset the board, which also clears the admin PIN so a new one can be set. This wipes the session, queue and saved results too.</dd>
+      <dd>Tap <span class="k">Admin</span>, then <b>Forgot the PIN?</b> under the PIN box. The app owner can enter their override PIN there to reset the board, which also clears the admin PIN so a new one can be set. This wipes the session, player list and saved results too.</dd>
       <dt>The beeps or voice don't play.</dt>
       <dd>Turn the device volume up, tap the screen before starting the round, and keep the screen on. Some phones pause sound when the screen locks.</dd>
     </dl>

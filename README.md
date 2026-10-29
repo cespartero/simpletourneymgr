@@ -14,13 +14,14 @@ A single-page app for running a **court up-and-down doubles tournament** for pic
 
 ## Features
 
-- **Queue**: players join by typing their name. The admin can reorder by dragging, mark someone as sitting out (they keep their place) or remove them before the tournament starts.
+- **Player List**: players join by typing their name. The admin can reorder by dragging, mark someone as sitting out (they keep their place) or remove them before the tournament starts, and re-add everyone from the last session in one tap.
+- **Planned rounds**: choose how many rounds to play when starting (suggested numbers keep games level). The board shows "Round 3 of 8" and asks before going past the plan.
 - **Untimed or timed rounds**: untimed rounds end when every court has a result. Timed rounds run for a set time (minutes and seconds) after a 10 second setup, with beeps and a spoken countdown. The round time can be changed between rounds.
 - **Pause, resume and end round** controls for the admin.
 - **Shuffle courts**: randomise courts and partners for the coming round.
 - **Score entry**: enter both scores per court; the higher score wins.
-- **Results and standings**: Allocations, Stats and Streaks views, plus last results and a copyable results summary.
-- **Timer only view**: a large timer display for a screen beside the courts.
+- **Results and standings**: Allocations, Stats (including average points per game), Streaks and match History views, plus last results with the match history and a copyable results summary.
+- **Full screen views** for a TV or big screen: courts (in your court layout, with team names), the leaderboard, or just the timer.
 - **Court layout**: arrange the court tiles to match the venue.
 - **Undo** for the last action.
 
