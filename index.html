@@ -1079,6 +1079,62 @@ table.res.small td{padding:6px}
     const tips = [fits(alt(qn + 1)).length ? `one more player (${planTxt(alt(qn + 1))})` : "", fits(alt(qn - 1)).length ? `one fewer player (${planTxt(alt(qn - 1))})` : ""].filter(Boolean);
     return `<p class="est-msg"><strong>${setup}</strong> Games even out every ${rs(cy)}, and no court setting gives ${MIN_R} to ${MAX_R} rounds for ${qn} players.${tips.length ? ` It would work with ${tips.join(" or ")}.` : ""}</p>`;
   }
+  // ---------- time estimator (timed rounds, before a session) ----------
+  // The rounds the plan above suggests, and how often games even out. Kept in step with roundPlanHtml.
+  function suggestedRounds(qn, courts) {
+    if (qn < 4) return { list: [], cycle: 1 };
+    const used = Math.min(courts, Math.floor(qn / 4)), cy = udCycle(qn, used * 4).rounds;
+    const fits = (cycle) => { const out = []; for (let r = cycle; r <= MAX_R; r += cycle) if (r >= MIN_R) out.push(r); return out; };
+    if (fits(cy).length) return { list: fits(cy), cycle: cy };
+    for (let c = used - 1; c >= 1; c--) { const r = udCycle(qn, c * 4).rounds; if (fits(r).length) return { list: fits(r), cycle: cy }; }
+    return { list: [], cycle: cy };
+  }
+  // Chosen on this device only; null means "follow the suggestion" or "use the saved round time".
+  let estRounds = null, estSecs = null;
+  const SETUP_SECS = 10;
+  const fmtTotal = (sec) => { const m = Math.ceil(sec / 60); return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`; };
+  function timeEstimate(qn, courts) {
+    const sug = suggestedRounds(qn, courts);
+    const rounds = estRounds != null ? estRounds : (sug.list[0] || 8);
+    const secs = estSecs != null ? estSecs : (settings.udSeconds || (settings.udMinutes || 12) * 60);
+    return { sug, rounds, secs, total: rounds * (secs + SETUP_SECS) };
+  }
+  function timeEstOutHtml(e) {
+    const end = new Date(Date.now() + e.total * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const uneven = qnNow() >= 4 && e.sug.cycle > 1 && e.rounds % e.sug.cycle !== 0;
+    return `<span class="te-big">About ${fmtTotal(e.total)}</span>
+      ${e.rounds} ${e.rounds === 1 ? "round" : "rounds"} of ${fmtMS(e.secs)}, plus the ${SETUP_SECS} second setup before each round. Starting now, you'd finish around ${esc(end)}. Allow extra time between rounds for entering results and changing courts.
+      ${uneven ? `<span class="te-warn">With ${e.rounds} rounds, some players will have played one game fewer. Games are level every ${e.sug.cycle} rounds.</span>` : ""}`;
+  }
+  const qnNow = () => waiting(state).length;
+  function timeEstHtml(qn, courts) {
+    const e = timeEstimate(qn, courts);
+    return `<div class="te-block" id="timeEst">
+      <div class="rr-h">Time estimator (timed rounds)</div>
+      <div class="te-row"><span class="te-lbl">Rounds</span>
+        <div class="arr-ctl"><button type="button" data-te-step="-1" aria-label="One round fewer">−</button><b>${e.rounds}</b><button type="button" data-te-step="1" aria-label="One round more">+</button></div>
+        ${e.sug.list.length ? `<div class="te-chips" role="group" aria-label="Suggested rounds">${e.sug.list.map(r => `<button type="button" data-te-pick="${r}" class="${r === e.rounds ? "on" : ""}" aria-pressed="${r === e.rounds}">${r}</button>`).join("")}</div>` : ""}
+      </div>
+      <div class="te-row"><span class="te-lbl">Time per round</span>
+        <div class="arr-ctl time-ctl"><input type="number" id="estMin" min="0" max="90" inputmode="numeric" aria-label="Minutes per round" value="${Math.floor(e.secs / 60)}"><span>min</span><input type="number" id="estSec" min="0" max="59" step="5" inputmode="numeric" aria-label="Seconds per round" value="${e.secs % 60}"><span>sec</span></div>
+      </div>
+      <p class="te-out" id="estOut" aria-live="polite">${timeEstOutHtml(e)}</p>
+    </div>`;
+  }
+  function bindTimeEst(qn, courts) {
+    const box = $("timeEst"); if (!box) return;
+    box.querySelectorAll("[data-te-step]").forEach(b => b.addEventListener("click", () => {
+      estRounds = Math.max(1, Math.min(30, timeEstimate(qn, courts).rounds + +b.dataset.teStep)); render();
+    }));
+    box.querySelectorAll("[data-te-pick]").forEach(b => b.addEventListener("click", () => { estRounds = +b.dataset.tePick; render(); }));
+    const readTime = () => {
+      const m = Math.max(0, Math.min(90, parseInt($("estMin").value, 10) || 0)), sc = Math.max(0, Math.min(59, parseInt($("estSec").value, 10) || 0));
+      estSecs = Math.max(10, m * 60 + sc);
+      $("estOut").innerHTML = timeEstOutHtml(timeEstimate(qn, courts));
+    };
+    ["estMin", "estSec"].forEach(id => { $(id).addEventListener("input", readTime); $(id).addEventListener("change", () => { readTime(); render(); }); });
+  }
+
   async function setCourtCount(n) {
     n = Math.max(1, Math.min(12, n));
     if (n === (settings.courtCount || 4)) return;
@@ -1984,12 +2040,17 @@ table.res.small td{padding:6px}
 
     // round estimator: only before a session starts
     const est = $("estimator");
-    if (!live && !arranging) {
+    const aeId = document.activeElement && document.activeElement.id;
+    if (!live && !arranging && (aeId === "estMin" || aeId === "estSec")) {
+      // Someone is typing a round time: leave the estimator alone until they finish.
+    } else if (!live && !arranging) {
       const courtsNow = settings.courtCount || 4;
       est.hidden = false;
       est.innerHTML = `<div class="est-head"><div class="rr-h">Round estimator</div>
           <div class="arr-ctl">${canWrite ? `<button type="button" data-cstep="-1" aria-label="One court fewer">\u2212</button>` : ""}<b>${courtsNow}</b><span>${courtsNow === 1 ? "court" : "courts"} available</span>${canWrite ? `<button type="button" data-cstep="1" aria-label="One court more">+</button>` : ""}</div></div>
-        ${roundPlanHtml(waiting(s).length, courtsNow)}`;
+        ${roundPlanHtml(waiting(s).length, courtsNow)}
+        ${canWrite ? timeEstHtml(waiting(s).length, courtsNow) : ""}`;
+      bindTimeEst(waiting(s).length, courtsNow);
       est.querySelectorAll("[data-cstep]").forEach(b => b.addEventListener("click", () => setCourtCount(courtsNow + +b.dataset.cstep)));
       est.querySelectorAll("[data-usecourts]").forEach(b => b.addEventListener("click", () => setCourtCount(+b.dataset.usecourts)));
     } else est.hidden = true;
@@ -2135,4 +2196,13 @@ table.res.small td{padding:6px}
   })();
 })();
 </script>
-<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.hdr-help{display:inline-flex;align-items:center;align-self:center;box-sizing:border-box;min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);color:var(--ink);font-weight:600;text-decoration:none}.hdr-help:hover{border-color:var(--muted)}.hdr-help:focus-visible,.app-foot a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.pin-forgot{align-self:center;background:none;border:0;min-height:36px;padding:4px 8px;color:var(--muted);font-weight:600;font-size:13px;text-decoration:underline}.pin-forgot:hover{color:var(--ink)}.app-foot{text-align:center;color:var(--muted);font-size:13px;padding-top:12px;border-top:1px solid var(--line)}.app-foot a{color:var(--muted);font-weight:600}.app-foot a:hover{color:var(--ink)}</style></body></html>
+<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.te-block{display:flex;flex-direction:column;gap:10px;border-top:1px solid color-mix(in srgb,var(--new) 35%,transparent);padding-top:12px}
+.te-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.te-lbl{font-size:13px;font-weight:600;color:var(--muted);min-width:96px}
+.te-chips{display:flex;flex-wrap:wrap;gap:6px}
+.te-chips button{min-height:34px;min-width:40px;padding:4px 10px;border-radius:999px;font-size:13px}
+.te-chips button.on{background:var(--sun);border-color:var(--sun);color:var(--sun-ink)}
+.te-out{margin:0;font-size:14px;color:var(--ink)}
+.te-out .te-big{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;display:block}
+.te-warn{color:var(--win);font-weight:600}
+.hdr-help{display:inline-flex;align-items:center;align-self:center;box-sizing:border-box;min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);color:var(--ink);font-weight:600;text-decoration:none}.hdr-help:hover{border-color:var(--muted)}.hdr-help:focus-visible,.app-foot a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.pin-forgot{align-self:center;background:none;border:0;min-height:36px;padding:4px 8px;color:var(--muted);font-weight:600;font-size:13px;text-decoration:underline}.pin-forgot:hover{color:var(--ink)}.app-foot{text-align:center;color:var(--muted);font-size:13px;padding-top:12px;border-top:1px solid var(--line)}.app-foot a{color:var(--muted);font-weight:600}.app-foot a:hover{color:var(--ink)}</style></body></html>
