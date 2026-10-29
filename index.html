@@ -618,6 +618,14 @@ table.res.small td{padding:6px}
     if (!cy.sit) return `Round ${ud.round}`;
     return `Round ${ud.round} of ${Math.ceil(ud.round / cy.rounds) * cy.rounds}`;
   }
+  // When everyone has played the same number of games. With sit-outs taking turns, games are level
+  // after every `every` rounds; `next` is the first such round from the current (or coming) round on.
+  function udLevel(s) {
+    const ud = s.session.ud, cy = udCycle(Object.keys(s.players).length, ud.per * 4);
+    const g = Object.values(s.players).map(p => p.games || 0);
+    const evenNow = ud.completed > 0 && g.length > 0 && Math.min(...g) === Math.max(...g);
+    return { sit: cy.sit, every: cy.rounds, evenNow, games: g[0] || 0, next: Math.ceil(ud.round / cy.rounds) * cy.rounds };
+  }
   function udParts(ud, now) {
     if (!ud || ud.state !== "playing") return { label: "", value: "", up: false };
     if (ud.pausedAt) { const t = udParts({ ...ud, pausedAt: null }, ud.pausedAt); return { ...t, label: "Paused", paused: true }; }
@@ -1029,6 +1037,26 @@ table.res.small td{padding:6px}
     if (ok) toast(paused ? "Round paused" : "Round resumed");
   }
 
+  // Everyone is level: check the admin really wants another round, and say when games are next level.
+  // Only asked when people sit out; with no sit-outs, games are level after every round.
+  function confirmStartUD(btn) {
+    const s = state;
+    if (!isUD(s) || s.session.ud.state !== "ready") return;
+    const ud = s.session.ud, lv = udLevel(s);
+    if (!(lv.sit && lv.evenNow)) { btn.disabled = true; return startUDRound(); }
+    modal(`
+      <h3>Play another round?</h3>
+      <p>Everyone has played the same number of games at this round: <strong>${lv.games} ${lv.games === 1 ? "game" : "games"} each</strong> after round ${ud.completed}. Are you sure you want to play another round?</p>
+      <p>The next round where everyone will have played the same number of games is <strong>round ${lv.next}</strong>${lv.next - ud.completed > 1 ? `, ${lv.next - ud.completed} rounds from now` : ""}.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button type="button" class="btn-sun" id="lvGo">Yes, play round ${ud.round}</button>
+        <button type="button" class="btn-danger" id="lvEnd">End session instead</button>
+        <button type="button" data-close>Not yet</button>
+      </div>`, (close) => {
+      $("lvGo").addEventListener("click", () => { close(); startUDRound(); });
+      $("lvEnd").addEventListener("click", () => { close(); endSession(); });
+    });
+  }
   async function startUDRound() {
     let label = "";
     const ok = await mutate((s, now) => {
@@ -1817,7 +1845,7 @@ table.res.small td{padding:6px}
     let html = callout + `<div class="rr-block"><div class="rr-h">${udRoundOf(s)} \u00b7 ${ud.state === "ready" ? "set, not started" : "on court"}</div>
       <div class="note">${ud.sitting.length ? `Sitting out this round: <strong>${ud.sitting.map(nm).join(", ")}</strong>` : "Everyone is playing this round."}</div>
       <div class="note">Winners move one court toward court 1. Losers move one court away. Partners change every round.</div>
-      ${(() => { const cy = udCycle(Object.keys(s.players).length, ud.per * 4); return cy.sit ? `<div class="note">With ${cy.sit} sitting out each round, everyone has played the same number of games every <strong>${cy.rounds} rounds</strong> (rounds ${cy.rounds}, ${cy.rounds * 2}, ${cy.rounds * 3} and so on).</div>` : `<div class="note">Everyone plays every round.</div>`; })()}</div>`;
+      ${(() => { const cy = udCycle(Object.keys(s.players).length, ud.per * 4); return cy.sit ? `<div class="note">With ${cy.sit} sitting out each round, everyone has played the same number of games every <strong>${cy.rounds} rounds</strong> (rounds ${cy.rounds}, ${cy.rounds * 2}, ${cy.rounds * 3} and so on). Next: <strong>after round ${udLevel(s).next}</strong>.</div>` : `<div class="note">Everyone plays every round.</div>`; })()}</div>`;
     const where = {};
     s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
     const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, pf: p.pf || 0, pa: p.pa || 0, top: p.top || 0, draws: p.draws || 0, court: where[id] || null, last: p.last || null, hist: p.hist || [], c1: p.c1 || 0 })) });
@@ -1884,15 +1912,15 @@ table.res.small td{padding:6px}
         const games = Object.values(s.players).map(p => p.games || 0), even = games.length && Math.min(...games) === Math.max(...games);
         rbar.hidden = false;
         if (ud.state === "ready") {
-          const cy = udCycle(Object.keys(s.players).length, ud.per * 4);
-          const nextEven = Math.ceil(Math.max(ud.completed, 1) / cy.rounds) * cy.rounds;
-          const evenTxt = ud.completed && even ? ` Everyone has played ${games[0]} ${games[0] === 1 ? "game" : "games"}, so this is a fair place to finish.`
-            : cy.sit ? ` Games are level after round ${nextEven}.` : "";
+          const lv = udLevel(s);
+          const evenTxt = (ud.completed && even ? ` Everyone has played ${games[0]} ${games[0] === 1 ? "game" : "games"}, so this is a fair place to finish.` : "")
+            + (lv.sit ? ` <span class="lvl-tag">${ud.completed && even ? "Next level" : "Games level"} after round ${lv.next}</span>` : "");
           rbar.innerHTML = `<span><b>${udRoundOf(s)} is set.</b> ${ud.timed ? "Timed round with a 10 second setup." : "Untimed round."}${evenTxt}</span>${ud.timed && canWrite ? `<div class="arr-ctl time-ctl"><span>Round time</span><input type="number" id="udTmMin" min="0" max="90" inputmode="numeric" aria-label="Minutes" value="${Math.floor(udSecs(ud) / 60)}"><span>min</span><input type="number" id="udTmSec" min="0" max="59" step="5" inputmode="numeric" aria-label="Seconds" value="${udSecs(ud) % 60}"><span>sec</span></div>` : ud.timed ? `<b>${fmtMS(udSecs(ud))}</b>` : ""}${canWrite ? `<button type="button" id="udShuffle">Shuffle courts</button><button class="btn-sun" id="udStart">Start round ${ud.round}</button>` : ""}`;
         } else {
-          rbar.innerHTML = `<span><b>${udRoundOf(s)}</b>${ud.timed ? "" : ` \u00b7 ${done} of ${courtsIn.length} ${courtsIn.length === 1 ? "court" : "courts"} finished`}</span>${(() => { const t = udParts(ud, Date.now()); return `<div class="udbig${t.up ? " up" : ""}${t.paused ? " paused" : ""}" role="timer"><span class="udlbl">${t.label}</span><span class="udnum">${t.value}</span></div>`; })()}${canWrite ? `<div class="ud-actions"><button type="button" id="udPause" class="${ud.pausedAt ? "btn-sun" : ""}"${pauseShown(udParts(ud, Date.now())) ? "" : " hidden"}>${ud.pausedAt ? "Resume" : "Pause"}</button>${ud.timed ? `<button class="btn-end ud-endround" id="udEndRound">End round</button>` : ""}</div>` : ""}`;
+          const lv = udLevel(s);
+          rbar.innerHTML = `<span><b>${udRoundOf(s)}</b>${ud.timed ? "" : ` \u00b7 ${done} of ${courtsIn.length} ${courtsIn.length === 1 ? "court" : "courts"} finished`}${lv.sit ? ` <span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : ""}</span>${(() => { const t = udParts(ud, Date.now()); return `<div class="udbig${t.up ? " up" : ""}${t.paused ? " paused" : ""}" role="timer"><span class="udlbl">${t.label}</span><span class="udnum">${t.value}</span></div>`; })()}${canWrite ? `<div class="ud-actions"><button type="button" id="udPause" class="${ud.pausedAt ? "btn-sun" : ""}"${pauseShown(udParts(ud, Date.now())) ? "" : " hidden"}>${ud.pausedAt ? "Resume" : "Pause"}</button>${ud.timed ? `<button class="btn-end ud-endround" id="udEndRound">End round</button>` : ""}</div>` : ""}`;
         }
-        $("udStart") && $("udStart").addEventListener("click", (e) => { e.currentTarget.disabled = true; startUDRound(); });
+        $("udStart") && $("udStart").addEventListener("click", (e) => confirmStartUD(e.currentTarget));
       if (!rbar.querySelector("#udFocus")) rbar.insertAdjacentHTML("beforeend", `<button type="button" id="udFocus" class="btn-ghost ud-focus">${timerOnly ? "Show full board" : "Timer only"}</button>`);
       $("udFocus").addEventListener("click", () => setTimerOnly(!timerOnly));
         $("udEndRound") && $("udEndRound").addEventListener("click", endRoundUD);
@@ -2196,7 +2224,9 @@ table.res.small td{padding:6px}
   })();
 })();
 </script>
-<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.te-block{display:flex;flex-direction:column;gap:10px;border-top:1px solid color-mix(in srgb,var(--new) 35%,transparent);padding-top:12px}
+<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.lvl-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;letter-spacing:.02em;padding:2px 9px;border-radius:999px;background:var(--new-bg);color:var(--new);border:1px solid var(--new);white-space:nowrap;vertical-align:1px}
+.lvl-tag.now{background:var(--new);color:var(--surface)}
+.te-block{display:flex;flex-direction:column;gap:10px;border-top:1px solid color-mix(in srgb,var(--new) 35%,transparent);padding-top:12px}
 .te-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 .te-lbl{font-size:13px;font-weight:600;color:var(--muted);min-width:96px}
 .te-chips{display:flex;flex-wrap:wrap;gap:6px}
