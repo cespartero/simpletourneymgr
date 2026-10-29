@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Up Down Help</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Figtree:wght@400;600;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#eef2f0; --surface:#ffffff; --ink:#14222b; --muted:#5b6b72; --line:#d3dcda;
+  --court:#2c6e8f; --court-deep:#1f5470; --court-line:#e9f3f6;
+  --sun:#f29a2e; --sun-ink:#3d2405;
+  --new:#2e7d5b; --new-bg:#e1f2ea; --win:#a8620c; --win-bg:#fcecd6;
+  --danger:#b3372f; --focus:#f29a2e;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e171c; --surface:#16232a; --ink:#e6eef0; --muted:#94a6ad; --line:#2a3a42;
+  --court:#24607e; --court-deep:#1a4b63; --court-line:#cfe3ea;
+  --sun:#f5a84a; --sun-ink:#2b1903;
+  --new:#7fd4ac; --new-bg:#173328; --win:#f5bf73; --win-bg:#3a2a12;
+  --danger:#f08b83; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0e171c; --surface:#16232a; --ink:#e6eef0; --muted:#94a6ad; --line:#2a3a42;
+  --court:#24607e; --court-deep:#1a4b63; --court-line:#cfe3ea;
+  --sun:#f5a84a; --sun-ink:#2b1903;
+  --new:#7fd4ac; --new-bg:#173328; --win:#f5bf73; --win-bg:#3a2a12;
+  --danger:#f08b83; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+.wrap{max-width:860px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-left,0px)) 48px max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.ball{width:38px;height:38px;border-radius:50%;background:var(--sun);flex:none;
+  background-image:radial-gradient(circle at 30% 30%,var(--bg) 0 3px,transparent 3.5px),radial-gradient(circle at 68% 34%,var(--bg) 0 3px,transparent 3.5px),radial-gradient(circle at 48% 66%,var(--bg) 0 3px,transparent 3.5px),radial-gradient(circle at 24% 66%,var(--bg) 0 2.5px,transparent 3px),radial-gradient(circle at 76% 70%,var(--bg) 0 2.5px,transparent 3px)}
+h1,h2,h3{font-family:var(--display);text-transform:uppercase;line-height:1.05;margin:0}
+h1{font-weight:800;font-size:clamp(26px,5vw,36px);letter-spacing:.01em}
+h2{font-weight:800;font-size:26px;letter-spacing:.02em;margin-bottom:10px}
+h3{font-weight:700;font-size:19px;letter-spacing:.03em;margin:18px 0 6px}
+.sub{color:var(--muted);font-size:14px;margin-top:3px}
+a{color:var(--court);font-weight:600}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) a{color:var(--court-line)}}
+:root[data-theme="dark"] a{color:var(--court-line)}
+a:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:10px 14px;border-radius:10px;background:var(--sun);color:var(--sun-ink)!important;border:1px solid var(--sun);text-decoration:none;font-weight:700}
+.btn:hover{border-color:var(--sun-ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.card p{margin:0 0 10px}
+.card p:last-child{margin-bottom:0}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.toc a{display:inline-block;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);text-decoration:none;font-size:14px;color:var(--ink)}
+.toc a:hover{border-color:var(--muted)}
+ol,ul{margin:0 0 10px;padding-left:22px}
+li{margin-bottom:6px}
+li:last-child{margin-bottom:0}
+b,strong{font-weight:700}
+.k{display:inline-block;font-size:13px;font-weight:700;padding:1px 8px;border-radius:7px;border:1px solid var(--line);background:var(--bg);white-space:nowrap}
+.note{background:var(--win-bg);border-left:4px solid var(--sun);border-radius:8px;padding:10px 14px;margin:12px 0 0}
+.diagram{display:flex;flex-direction:column;gap:8px;margin:14px 0 4px}
+.crt{display:grid;grid-template-columns:72px 1fr 1fr;gap:8px;align-items:center}
+.crt .num{background:var(--court);color:var(--court-line);border-radius:8px;font-family:var(--display);font-weight:800;text-transform:uppercase;text-align:center;padding:8px 0}
+.crt .mv{font-size:14px;padding:8px 10px;border-radius:8px}
+.mv.up{background:var(--new-bg);color:var(--new)}
+.mv.down{background:var(--win-bg);color:var(--win)}
+.mv.none{color:var(--muted);border:1px dashed var(--line)}
+dl{margin:0}
+dt{font-weight:700;margin-top:12px}
+dt:first-child{margin-top:0}
+dd{margin:2px 0 0}
+footer{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
+@media (max-width:520px){.crt{grid-template-columns:56px 1fr}.crt .num{grid-row:span 2;align-self:stretch;display:flex;align-items:center;justify-content:center}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="ball" aria-hidden="true"></div>
+      <div>
+        <h1>Up Down Tournament Manager</h1>
+        <div class="sub">Help and how-to guide</div>
+      </div>
+    </div>
+    <a class="btn" href="index.html">Back to the board</a>
+  </header>
+
+  <nav aria-label="Contents">
+    <ul class="toc">
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#players">For players</a></li>
+      <li><a href="#start">Starting</a></li>
+      <li><a href="#rounds">Running rounds</a></li>
+      <li><a href="#scores">Scores</a></li>
+      <li><a href="#standings">Standings</a></li>
+      <li><a href="#admin">Admin tools</a></li>
+      <li><a href="#data">Your data</a></li>
+      <li><a href="#faq">Questions</a></li>
+    </ul>
+  </nav>
+
+  <section class="card" id="how">
+    <h2>How up and down works</h2>
+    <p>Everyone plays doubles, and every round starts and ends at the same time. After each round:</p>
+    <ul>
+      <li><b>Winners move one court toward court 1.</b></li>
+      <li><b>Losers move one court away from court 1.</b></li>
+      <li>Winners on court 1 stay on court 1. Losers on the last court stay there.</li>
+      <li><b>Partners change every round.</b> Where a court gets a winner and a loser coming in, they're paired together. Otherwise last round's partners are split up.</li>
+    </ul>
+    <div class="diagram" aria-label="Example with three courts">
+      <div class="crt"><div class="num">Ct 1</div><div class="mv none">Winners stay</div><div class="mv down">Losers go to court 2</div></div>
+      <div class="crt"><div class="num">Ct 2</div><div class="mv up">Winners go to court 1</div><div class="mv down">Losers go to court 3</div></div>
+      <div class="crt"><div class="num">Ct 3</div><div class="mv up">Winners go to court 2</div><div class="mv none">Losers stay</div></div>
+    </div>
+    <p>Over the night, the strongest players work their way to court 1. The board calls out anyone who has held court 1 for several rounds in a row.</p>
+  </section>
+
+  <section class="card" id="players">
+    <h2>For players</h2>
+    <ol>
+      <li>Type your name in the <b>Queue</b> box and tap <span class="k">Join</span>.</li>
+      <li>Wait for the admin to start. You'll be placed on a court in queue order, starting from court 1.</li>
+      <li>Check the board each round to see your court and partner.</li>
+    </ol>
+    <p class="note">Entries close once the tournament starts. Make sure everyone has joined first.</p>
+  </section>
+
+  <section class="card" id="start">
+    <h2>Starting a tournament</h2>
+    <ol>
+      <li>Get everyone into the queue. You need at least 4 players.</li>
+      <li>Tap <span class="k">Start session</span> and enter the admin PIN. The first time, you'll choose a PIN.</li>
+      <li>Choose the <b>round timing</b>:
+        <ul>
+          <li><b>Untimed</b>: each round ends when every court has a result.</li>
+          <li><b>Timed</b>: every round runs for a set time (minutes and seconds) after a 10 second setup.</li>
+        </ul>
+      </li>
+      <li>Check the summary. It tells you how many courts will be used and, if the numbers don't divide by 4, how many sit out each round.</li>
+      <li>Tap <span class="k">Start up and down</span>, then <span class="k">Start round 1</span> once everyone is on court.</li>
+    </ol>
+    <h3>Odd numbers and sit-outs</h3>
+    <p>Each court takes 4 players. Anyone left over sits out that round, and sit-outs take turns. The app tells you how many rounds it takes for everyone to have played the same number of games, so you can plan a fair finish.</p>
+  </section>
+
+  <section class="card" id="rounds">
+    <h2>Running rounds</h2>
+    <dl>
+      <dt>Start round</dt>
+      <dd>Begins the round. In timed mode this starts the 10 second setup, then the countdown, with beeps and a spoken countdown near the end.</dd>
+      <dt>Pause and Resume</dt>
+      <dd>Stops and restarts the clock in timed mode.</dd>
+      <dt>End round</dt>
+      <dd>Finishes the round early so you can enter results.</dd>
+      <dt>Round time</dt>
+      <dd>In timed mode, you can change the time for the next round before you start it.</dd>
+      <dt>Shuffle courts</dt>
+      <dd>Before a round starts, puts everyone due to play on a random court with random partners. Players due to sit out keep sitting out.</dd>
+      <dt>Timer only</dt>
+      <dd>Shows a large timer on its own, handy for a screen beside the courts. Tap <span class="k">Show full board</span> to go back.</dd>
+    </dl>
+    <p class="note">On phones and tablets, tap the screen once before the round starts so the browser allows the beeps and voice to play.</p>
+  </section>
+
+  <section class="card" id="scores">
+    <h2>Entering scores</h2>
+    <ol>
+      <li>When a round ends, enter the score for every court.</li>
+      <li>The higher score wins and moves up.</li>
+      <li>If a court finishes level, choose which team moves up. Both teams record a draw.</li>
+      <li>Tap <span class="k">Save all results</span>. The next round is set automatically.</li>
+    </ol>
+    <p>Every court needs a result before the next round can begin. Made a mistake? Use <span class="k">Undo</span> to step back the last action.</p>
+  </section>
+
+  <section class="card" id="standings">
+    <h2>Standings and results</h2>
+    <dl>
+      <dt>Allocations</dt>
+      <dd>Who is on which court this round, who is sitting out, and where everyone played last round.</dd>
+      <dt>Stats</dt>
+      <dd>Games played, won, drawn and lost, points won and lost, points difference and win percentage.</dd>
+      <dt>Streaks</dt>
+      <dd>Each player's current streak, best winning run and last 5 results.</dd>
+    </dl>
+    <p style="margin-top:12px">When you end the session, the final results stay on the board. Use <span class="k">Copy results</span> to paste them into a message or post, and <span class="k">Show last results</span> to bring them back later.</p>
+  </section>
+
+  <section class="card" id="admin">
+    <h2>Admin tools</h2>
+    <p>Tap <span class="k">Admin</span> and enter the PIN. Admin stays unlocked for 30 minutes, then locks again on its own.</p>
+    <dl>
+      <dt>Queue</dt>
+      <dd>Before the tournament, drag players to reorder the queue, use <span class="k">Sit out</span> and <span class="k">Back in</span>, or <span class="k">Remove</span> someone.</dd>
+      <dt>Arrange courts</dt>
+      <dd>Set the number of columns and rows, then drag courts so the board matches the layout of your venue. Leave gaps for walkways.</dd>
+      <dt>Change PIN</dt>
+      <dd>Set a new admin PIN.</dd>
+      <dt>Add test players</dt>
+      <dd>Fill the queue with sample names to try the app out.</dd>
+      <dt>Download backup and Restore backup</dt>
+      <dd>Save the board to a file, or load one back in.</dd>
+      <dt>Start new session</dt>
+      <dd>Clear the last results and get ready for a new tournament.</dd>
+      <dt>Full reset</dt>
+      <dd>Wipes everything, including players and settings. Type <span class="k">RESET</span> to confirm.</dd>
+      <dt>Lock admin</dt>
+      <dd>Locks admin straight away.</dd>
+    </dl>
+    <p style="margin-top:12px">To finish for the night, tap <span class="k">End session</span>. The final results stay on the board.</p>
+  </section>
+
+  <section class="card" id="data">
+    <h2>Where your data is kept</h2>
+    <ul>
+      <li>Everything is saved in this browser on this device. Nothing is sent anywhere, and no sign-in is needed.</li>
+      <li>Tabs open in the same browser stay in sync. Other devices each have their own separate board.</li>
+      <li>Clearing your browser's data clears the board. Use <b>Download backup</b> to keep a copy.</li>
+      <li>The app works offline. Download <b>index.html</b> (and this help page, if you want it) and open it in your browser.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="faq">
+    <h2>Common questions</h2>
+    <dl>
+      <dt>Can someone join once the tournament has started?</dt>
+      <dd>No. Entries close when it starts. End the session and start a new one to add people.</dd>
+      <dt>Why can't I start the next round?</dt>
+      <dd>Every court needs a result first. Check for a court with no score, or a draw where nobody has been chosen to move up.</dd>
+      <dt>I forgot the admin PIN.</dt>
+      <dd>The PIN is stored on this device only. A full reset needs the PIN too, so the only way back in is to clear this site's data in your browser settings, which also clears the board.</dd>
+      <dt>The beeps or voice don't play.</dt>
+      <dd>Turn the device volume up, tap the screen before starting the round, and keep the screen on. Some phones pause sound when the screen locks.</dd>
+    </dl>
+  </section>
+
+  <footer>
+    <a href="index.html">Back to the board</a> · <a href="https://github.com/cespartero/simpletourneymgr">Source on GitHub</a>
+  </footer>
+</div>
+</body>
+</html>

@@ -55,6 +55,7 @@ All data is kept in the browser's own storage (`localStorage`) on the device run
 
 ```
 index.html   The whole app: markup, styles, scripts and embedded fonts
+help.html    Help and how-to guide, linked from the app header
 README.md    This file
 ```
 
