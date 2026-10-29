@@ -671,6 +671,14 @@ table.res.small td{padding:6px}
       let h = 2166136261; for (const b of data) { h ^= b; h = Math.imul(h, 16777619); } return "f" + (h >>> 0).toString(16);
     }
   }
+  // Owner override: a fixed PIN that can't be changed in the app. Only its slow salted hash is kept here.
+  const OVERRIDE = { salt: "d2adf44f0707afbcb6e364be3437a048", iter: 600000, hash: "9d08496be47fccf66e7c758c9dafbceeeef694980fed55adf2d76a49ad474639" };
+  async function checkOverride(pin) {
+    const hex = (h) => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: hex(OVERRIDE.salt), iterations: OVERRIDE.iter }, key, 256);
+    return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, "0")).join("") === OVERRIDE.hash;
+  }
   const isAdmin = () => Date.now() < adminUntil;
   // The Admin button always shows whether admin tools are unlocked on this device.
   function setAdminLabel() {
@@ -701,7 +709,9 @@ table.res.small td{padding:6px}
         ${hasPin ? "" : `<label>Repeat PIN<input type="password" id="pin2" inputmode="numeric" maxlength="12" autocomplete="off"></label>`}
         <p class="err" id="pinErr" hidden></p>
         <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun">${hasPin ? "Unlock" : "Save PIN"}</button></div>
+        ${hasPin ? `<button type="button" class="pin-forgot" id="pinForgot">Forgot the PIN?</button>` : ""}
       </form>`, (close) => {
+      if (hasPin) $("pinForgot").addEventListener("click", overrideReset);
       $("pinForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const p1 = $("pin1").value.trim(), err = $("pinErr");
@@ -1314,15 +1324,47 @@ table.res.small td{padding:6px}
           e.preventDefault();
           if ($("rsWord").value.trim().toUpperCase() !== "RESET") return;
           close();
-          const ok = await mutate((s) => {
-            for (const k of Object.keys(s)) delete s[k];
-            s.session = null; s.players = {};
-          });
-          if (!ok) return;
-          try { await settingsRef.set({}); } catch (e2) { fail(e2); return; }
-          settings = {}; layoutDoc = null; adminUntil = 0; freeingCourt = null;
-          render(); toast("Board reset");
+          if (await wipeBoard()) toast("Board reset");
         });
+      });
+    });
+  }
+
+  async function wipeBoard() {
+    const ok = await mutate((s) => {
+      for (const k of Object.keys(s)) delete s[k];
+      s.session = null; s.players = {};
+    });
+    if (!ok) return false;
+    try { await settingsRef.set({}); } catch (e2) { fail(e2); return false; }
+    settings = {}; layoutDoc = null; adminUntil = 0; freeingCourt = null;
+    render(); return true;
+  }
+
+  // Override reset: for when the admin PIN is forgotten. Needs the owner's override PIN.
+  function overrideReset() {
+    modal(`
+      <h3>Override reset</h3>
+      <p>Forgotten the admin PIN? The app owner can reset the board with the override PIN. This clears everything, the same as a full reset: the session, the queue, saved results, the court layout and the admin PIN. The next person to tap Admin sets a new PIN. This can't be undone.</p>
+      <form id="ovForm" style="display:flex;flex-direction:column;gap:10px">
+        <label>Override PIN<input type="password" id="ovPin" inputmode="numeric" maxlength="20" autocomplete="off"></label>
+        <label>Type RESET to confirm<input type="text" id="ovWord" autocomplete="off" autocapitalize="characters"></label>
+        <p class="err" id="ovErr" hidden></p>
+        <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-danger" id="ovGo" disabled>Reset everything</button></div>
+      </form>`, (close) => {
+      const go = $("ovGo"), err = $("ovErr");
+      const ready = () => $("ovPin").value.trim().length > 0 && $("ovWord").value.trim().toUpperCase() === "RESET";
+      ["ovPin", "ovWord"].forEach(id => $(id).addEventListener("input", () => { go.disabled = !ready(); err.hidden = true; }));
+      $("ovForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!ready()) return;
+        go.disabled = true; go.textContent = "Checking…";
+        let ok = false;
+        try { ok = await checkOverride($("ovPin").value.trim()); }
+        catch { err.textContent = "This browser can't check the override PIN. Try a current version of Chrome, Safari, Edge or Firefox."; err.hidden = false; go.textContent = "Reset everything"; go.disabled = false; return; }
+        if (!ok) { $("ovPin").value = ""; err.textContent = "That override PIN isn't right."; err.hidden = false; go.textContent = "Reset everything"; $("ovPin").focus(); return; }
+        close();
+        if (await wipeBoard()) toast("Board reset. The admin PIN has been cleared.");
       });
     });
   }
@@ -2065,4 +2107,4 @@ table.res.small td{padding:6px}
   })();
 })();
 </script>
-<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.hdr-help{display:inline-flex;align-items:center;align-self:center;box-sizing:border-box;min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);color:var(--ink);font-weight:600;text-decoration:none}.hdr-help:hover{border-color:var(--muted)}.hdr-help:focus-visible,.app-foot a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.app-foot{text-align:center;color:var(--muted);font-size:13px;padding-top:12px;border-top:1px solid var(--line)}.app-foot a{color:var(--muted);font-weight:600}.app-foot a:hover{color:var(--ink)}</style></body></html>
+<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.hdr-help{display:inline-flex;align-items:center;align-self:center;box-sizing:border-box;min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);color:var(--ink);font-weight:600;text-decoration:none}.hdr-help:hover{border-color:var(--muted)}.hdr-help:focus-visible,.app-foot a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.pin-forgot{align-self:center;background:none;border:0;min-height:36px;padding:4px 8px;color:var(--muted);font-weight:600;font-size:13px;text-decoration:underline}.pin-forgot:hover{color:var(--ink)}.app-foot{text-align:center;color:var(--muted);font-size:13px;padding-top:12px;border-top:1px solid var(--line)}.app-foot a{color:var(--muted);font-weight:600}.app-foot a:hover{color:var(--ink)}</style></body></html>
