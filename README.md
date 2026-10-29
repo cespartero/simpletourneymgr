@@ -21,7 +21,7 @@ A single-page app for running a **court up-and-down doubles tournament** for pic
 - **Shuffle courts**: randomise courts and partners for the coming round.
 - **Score entry**: enter both scores per court; the higher score wins.
 - **Results and standings**: Allocations, Stats (including average points per game), Streaks and match History views, plus last results with the match history and a copyable results summary.
-- **Full screen views** for a TV or big screen: courts (in your court layout, with team names), the leaderboard, or just the timer.
+- **Page tabs**: Board, Courts (every court in your court layout, with team names), Leaderboard, Timer and Help, plus a Full screen button for a TV or big screen.
 - **Court layout**: arrange the court tiles to match the venue.
 - **Undo** for the last action.
 

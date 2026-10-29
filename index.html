@@ -109,7 +109,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .ud-focus{flex:none}
 body.timer-only header,body.timer-only .section-h,body.timer-only aside,body.timer-only #courts,body.timer-only #undoBar,body.timer-only #readonlyBanner{display:none!important}
 body.timer-only .layout{grid-template-columns:minmax(0,1fr)}
-body.timer-only #roundBar{min-height:calc(100vh - 60px);margin:0;flex-direction:column;flex-wrap:nowrap;justify-content:center;align-items:center;text-align:center;gap:18px;border:0;background:var(--bg);font-size:24px;padding:16px}
+body.timer-only #roundBar{min-height:calc(100vh - 118px);margin:0;flex-direction:column;flex-wrap:nowrap;justify-content:center;align-items:center;text-align:center;gap:18px;border:0;background:var(--bg);font-size:24px;padding:16px}
 body.timer-only #roundBar>span{font-size:clamp(20px,3.2vw,34px);max-width:40ch}
 body.timer-only .udbig{flex:none}
 body.timer-only .udbig .udlbl{font-size:clamp(14px,2vw,22px)}
@@ -334,6 +334,7 @@ table.res.small td{padding:6px}
   };
 })();
 </script>
+<nav id="viewTabs" class="view-tabs" aria-label="Views"></nav>
 <div class="wrap">
   <header>
     <div class="brand">
@@ -1778,22 +1779,41 @@ table.res.small td{padding:6px}
     if (on) bigView = null;
     timerOnly = on;
     try { localStorage.setItem("suns-timer-only", on ? "1" : "0"); } catch {}
-    try {
-      if (on && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-      if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
-    } catch {}
     render();
     window.scrollTo(0, 0);
   }
   function setBigView(v) {
     bigView = v;
     if (v && timerOnly) { timerOnly = false; try { localStorage.setItem("suns-timer-only", "0"); } catch {} }
-    try {
-      if (v && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-      if (!v && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
-    } catch {}
     render();
     window.scrollTo(0, 0);
+  }
+  // Page tabs: Board, Courts, Leaderboard, Timer (while a session runs) and Help. The view is per device.
+  const helpOpen = () => document.body.classList.contains("show-help");
+  function currentView() {
+    const ud = isUD(state) && !arranging;
+    return helpOpen() ? "help" : ud && bigView ? bigView : ud && timerOnly ? "timer" : "board";
+  }
+  function goView(v) {
+    if (v === "help") { if ($("helpView") && typeof showHelp === "function") showHelp(true); else location.href = "help.html"; return; }
+    if (helpOpen() && typeof showHelp === "function") showHelp(false);
+    if (v === "timer") return setTimerOnly(true);
+    if (v === "courts" || v === "stats") return setBigView(v);
+    bigView = null;
+    if (timerOnly) setTimerOnly(false); else { render(); window.scrollTo(0, 0); }
+  }
+  function renderTabs() {
+    const nav = $("viewTabs"); if (!nav) return;
+    const cur = currentView(), ud = isUD(state) && !arranging, inPage = !!$("helpView");
+    const tabs = [["board", "Board"], ...(ud ? [["courts", "Courts"], ["stats", "Leaderboard"], ["timer", "Timer"]] : []), ["help", "Help"]];
+    const fsOk = !!(document.documentElement.requestFullscreen && document.exitFullscreen);
+    nav.innerHTML = `<div class="vt-list" role="tablist">${tabs.map(([k, l]) => k === "help" && !inPage
+        ? `<a class="vt" href="help.html">${l}</a>`
+        : `<button type="button" role="tab" class="vt${k === cur ? " on" : ""}" aria-selected="${k === cur}" data-view="${k}">${l}</button>`).join("")}</div>${fsOk ? `<button type="button" class="vt-fs" id="vtFs">${document.fullscreenElement ? "Exit full screen" : "Full screen"}</button>` : ""}`;
+    nav.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => goView(b.dataset.view)));
+    $("vtFs") && $("vtFs").addEventListener("click", () => {
+      try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else document.documentElement.requestFullscreen().catch(() => {}); } catch {}
+    });
   }
   async function moveInQueue(id, toIndex) {
     let moved = false;
@@ -1957,7 +1977,7 @@ table.res.small td{padding:6px}
       const tA = d ? (d.winner === "A" ? " won" : " lost") : "", tB = d ? (d.winner === "B" ? " won" : " lost") : "";
       return `<div class="bv-court${d ? " done" : ""}"${at}><div class="bv-num">Court ${c.num}</div><div class="bv-team${tA}">${nm(c.teamA)}</div><div class="bv-vs">vs</div><div class="bv-team${tB}">${nm(c.teamB)}</div>${res}</div>`;
     }).join("");
-    return `<div class="bv-head"><div class="bv-hl"><div class="bv-title">${udRoundOf(s)}</div>${lv.sit ? `<span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : ""}</div>${clock}<div class="bv-btns"><button type="button" data-bv="stats">Full screen stats</button><button type="button" class="btn-sun" data-bv="">Exit full screen</button></div></div>
+    return `<div class="bv-head"><div class="bv-hl"><div class="bv-title">${udRoundOf(s)}</div>${lv.sit ? `<span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : ""}</div>${clock}</div>
       <div class="bv-grid" style="grid-template-columns:repeat(${L.cols},minmax(0,1fr))">${cards}</div>
       ${ud.sitting.length ? `<div class="bv-sit">Sitting out this round: <strong>${ud.sitting.map(id => esc(s.players[id]?.name || "?")).join(", ")}</strong></div>` : ""}`;
   }
@@ -1967,7 +1987,7 @@ table.res.small td{padding:6px}
     const rows = rankRows({ mode: "ud", rows: Object.values(s.players).map(p => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, hist: p.hist || [] })) });
     const dr = rows.some(r => r.draws);
     const streak = (h) => { const st = streakOf(h); return st.n >= 2 ? `${st.n} ${st.kind === "W" ? "wins" : st.kind === "L" ? "losses" : "draws"}` : "–"; };
-    return `<div class="bv-head"><div class="bv-hl"><div class="bv-title">Leaderboard</div><span class="bv-subt">${udRoundOf(s)} · ${ud.completed} ${ud.completed === 1 ? "round" : "rounds"} played</span></div><div class="bv-btns"><button type="button" data-bv="courts">Full screen courts</button><button type="button" class="btn-sun" data-bv="">Exit full screen</button></div></div>
+    return `<div class="bv-head"><div class="bv-hl"><div class="bv-title">Leaderboard</div><span class="bv-subt">${udRoundOf(s)} · ${ud.completed} ${ud.completed === 1 ? "round" : "rounds"} played</span></div></div>
       <div class="tbl-wrap"><table class="res bv-table"><thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${scored ? "<th>+/−</th><th>Avg pts</th>" : ""}<th>Win %</th><th>Streak</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scored ? `<td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td><td>${streak(r.hist)}</td></tr>`).join("")}</tbody></table></div>
       <p class="note bv-note">Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${scored ? ", then points difference, then points scored" : ""}. Avg pts is points scored per game.</p>`;
@@ -2029,10 +2049,6 @@ table.res.small td{padding:6px}
           rbar.innerHTML = `<span><b>${udRoundOf(s)}</b>${ud.timed ? "" : ` \u00b7 ${done} of ${courtsIn.length} ${courtsIn.length === 1 ? "court" : "courts"} finished`}${lv.sit ? ` <span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : ""}</span>${(() => { const t = udParts(ud, Date.now()); return `<div class="udbig${t.up ? " up" : ""}${t.paused ? " paused" : ""}" role="timer"><span class="udlbl">${t.label}</span><span class="udnum">${t.value}</span></div>`; })()}${canWrite ? `<div class="ud-actions"><button type="button" id="udPause" class="${ud.pausedAt ? "btn-sun" : ""}"${pauseShown(udParts(ud, Date.now())) ? "" : " hidden"}>${ud.pausedAt ? "Resume" : "Pause"}</button>${ud.timed ? `<button class="btn-end ud-endround" id="udEndRound">End round</button>` : ""}</div>` : ""}`;
         }
         $("udStart") && $("udStart").addEventListener("click", (e) => confirmStartUD(e.currentTarget));
-      if (!rbar.querySelector("#udFocus")) rbar.insertAdjacentHTML("beforeend", `<div class="fs-btns">${timerOnly ? "" : `<button type="button" id="fsCourts" class="btn-ghost">Full screen courts</button><button type="button" id="fsStats" class="btn-ghost">Full screen stats</button>`}<button type="button" id="udFocus" class="btn-ghost ud-focus">${timerOnly ? "Show full board" : "Full screen timer"}</button></div>`);
-      $("udFocus").addEventListener("click", () => setTimerOnly(!timerOnly));
-      $("fsCourts") && $("fsCourts").addEventListener("click", () => setBigView("courts"));
-      $("fsStats") && $("fsStats").addEventListener("click", () => setBigView("stats"));
         $("udEndRound") && $("udEndRound").addEventListener("click", endRoundUD);
       $("udShuffle") && $("udShuffle").addEventListener("click", (e) => { e.currentTarget.disabled = true; shuffleUD(); });
       $("udPause") && $("udPause").addEventListener("click", (e) => { e.currentTarget.disabled = true; togglePause(); });
@@ -2159,6 +2175,7 @@ table.res.small td{padding:6px}
       box.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => { freeingCourt = null; frozenAt = null; render(); }));
     }
 
+    renderTabs();
     // full screen courts or stats (this device only)
     const bigOn = !!bigView && udLive && !arranging;
     document.body.classList.toggle("big-view", bigOn);
@@ -2237,8 +2254,8 @@ table.res.small td{padding:6px}
   // ---------- wiring ----------
   $("addForm").addEventListener("submit", (e) => { e.preventDefault(); addPlayer($("nameInput").value); });
   $("adminBtn").addEventListener("click", adminMenu);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && bigView) setBigView(null); });
-  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && bigView) setBigView(null); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !document.fullscreenElement && currentView() !== "board") goView("board"); });
+  document.addEventListener("fullscreenchange", renderTabs);
   $("endBtn").addEventListener("click", endSession);
   $("cMinus").addEventListener("click", () => resizeLayout(-1, 0));
   $("cPlus").addEventListener("click", () => resizeLayout(1, 0));
@@ -2345,9 +2362,18 @@ table.res.small td{padding:6px}
   })();
 })();
 </script>
-<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.fs-btns{display:flex;flex-wrap:wrap;gap:8px}
+<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.view-tabs{position:sticky;top:0;z-index:12;display:flex;align-items:center;gap:8px;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));background:var(--surface);border-bottom:1px solid var(--line)}
+.vt-list{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}
+.vt-list::-webkit-scrollbar{display:none}
+.vt{flex:none;display:inline-flex;align-items:center;min-height:40px;padding:6px 14px;border-radius:999px;border:1px solid transparent;background:transparent;color:var(--muted);font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap;cursor:pointer}
+.vt:hover{color:var(--ink);border-color:var(--line)}
+.vt.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.vt:focus-visible,.vt-fs:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.vt-fs{flex:none;min-height:40px;padding:6px 12px;font-size:13px}
+@media (max-width:480px){.view-tabs{padding-left:8px;padding-right:8px}.vt-list{gap:0}.vt{padding:6px 8px;font-size:13px}.vt-fs{display:none}}
+body.show-help #bigView{display:none!important}
 body.big-view>.wrap,body.big-view #helpView{display:none!important}
-#bigView{min-height:100vh;box-sizing:border-box;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px;background:var(--bg)}
+#bigView{min-height:calc(100vh - 58px);box-sizing:border-box;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px;background:var(--bg)}
 .bv-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
 .bv-hl{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
 .bv-title{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(28px,4vw,56px);line-height:1}
