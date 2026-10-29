@@ -1279,31 +1279,59 @@ table.res.small td{padding:6px}
   }
 
   // TESTING ONLY: remove this function and its Admin button before real use.
-  const FIRST = ["Ava","Ben","Chloe","Dan","Ella","Finn","Grace","Harry","Isla","Jack","Kate","Liam","Mia","Noah","Olive","Paul","Quinn","Ruby","Sam","Tara","Uma","Vince","Will","Zoe","Leo","Nina","Oscar","Priya","Raj","Sofia","Tom","Wendy"];
+  // Test players are named "Adjective Animal", for example "Brave Wombat".
+  // Each adjective and each animal is used once before any word repeats, counting names already on the board,
+  // so test players are easy to tell apart. 60 of each covers the 48 players that 12 courts can hold.
+  const TEST_ADJ = ["Brave","Swift","Sunny","Lucky","Jolly","Clever","Mighty","Gentle","Fuzzy","Bouncy","Cheeky","Daring","Eager","Fancy","Giddy","Humble","Jazzy","Keen","Lively","Merry","Nimble","Noble","Peppy","Plucky","Quiet","Rosy","Sassy","Shiny","Silly","Sleepy","Snappy","Sparkly","Speedy","Spicy","Sporty","Steady","Stormy","Sturdy","Tiny","Trusty","Witty","Zesty","Bold","Breezy","Calm","Chirpy","Cosmic","Dizzy","Frosty","Golden","Grumpy","Proud","Royal","Rusty","Wild","Wise","Mellow","Dapper","Feisty","Cosy"];
+  const TEST_ANIMAL = ["Bear","Otter","Gecko","Koala","Wombat","Kangaroo","Emu","Platypus","Dingo","Possum","Echidna","Quokka","Wallaby","Penguin","Dolphin","Turtle","Falcon","Eagle","Owl","Parrot","Cockatoo","Kookaburra","Pelican","Magpie","Fox","Wolf","Tiger","Lion","Panda","Zebra","Giraffe","Hippo","Rhino","Moose","Badger","Beaver","Rabbit","Hedgehog","Squirrel","Raccoon","Llama","Alpaca","Camel","Goat","Lemur","Sloth","Meerkat","Lynx","Puma","Jaguar","Cheetah","Seal","Walrus","Octopus","Shark","Crab","Frog","Lizard","Flamingo","Toucan"];
+  const TEST_MAX = 48;
+  // Picks the least used word, at random among ties.
+  function leastUsed(words, count, avoid) {
+    const ok = words.filter(w => !avoid || !avoid(w));
+    const low = Math.min(...ok.map(w => count[w] || 0));
+    const pool = ok.filter(w => (count[w] || 0) === low);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function testNames(n, existing) {
+    const adjCount = {}, aniCount = {}, taken = new Set(existing.map(x => x.toLowerCase()));
+    existing.forEach(full => full.split(/\s+/).forEach(w => {
+      if (TEST_ADJ.includes(w)) adjCount[w] = (adjCount[w] || 0) + 1;
+      if (TEST_ANIMAL.includes(w)) aniCount[w] = (aniCount[w] || 0) + 1;
+    }));
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const adj = leastUsed(TEST_ADJ, adjCount);
+      // Choose an animal that doesn't make a name already on the board.
+      const ani = leastUsed(TEST_ANIMAL, aniCount, a => taken.has(`${adj} ${a}`.toLowerCase()));
+      if (!ani) break;
+      const name = `${adj} ${ani}`;
+      adjCount[adj] = (adjCount[adj] || 0) + 1; aniCount[ani] = (aniCount[ani] || 0) + 1;
+      taken.add(name.toLowerCase()); out.push(name);
+    }
+    return out;
+  }
   function testPlayers() {
     if (isTour(state)) return toast("Entries are closed while the tournament is running.");
     modal(`
       <h3>Add test players</h3>
-      <p>For testing only. Adds random names to the end of the queue as new players.</p>
+      <p>For testing only. Adds players named after an adjective and an animal, such as Brave Wombat, to the end of the queue. Words aren't repeated until all of them have been used.</p>
       <form id="tpForm" style="display:flex;flex-direction:column;gap:10px">
-        <label>How many<input type="number" id="tpCount" min="1" max="40" value="12"></label>
+        <label>How many (up to ${TEST_MAX})<input type="number" id="tpCount" min="1" max="${TEST_MAX}" value="12"></label>
         <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun">Add players</button></div>
       </form>`, (close) => {
       $("tpForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const n = Math.max(1, Math.min(40, parseInt($("tpCount").value, 10) || 0));
+        const n = Math.max(1, Math.min(TEST_MAX, parseInt($("tpCount").value, 10) || 0));
         close();
         let added = 0;
         const ok = await mutate((s, now) => {
-          const taken = new Set(Object.values(s.players).map(p => p.name.toLowerCase()));
-          for (let i = 0, tries = 0; i < n && tries < 2000; tries++) {
-            const name = FIRST[Math.floor(Math.random() * FIRST.length)] + " " + String.fromCharCode(65 + Math.floor(Math.random() * 26)) + ".";
-            if (taken.has(name.toLowerCase())) continue;
-            taken.add(name.toLowerCase());
+          const fresh = testNames(n, Object.values(s.players).map(p => p.name));
+          fresh.forEach((name, i) => {
             const id = "p" + (now + i).toString(36) + Math.random().toString(36).slice(2, 6);
             s.players[id] = { name, status: "new", since: now + i, games: 0, wins: 0, test: true };
-            i++; added++;
-          }
+            added++;
+          });
+          if (!added) return false;
         });
         if (ok) toast(`Added ${added} test players`);
       });
