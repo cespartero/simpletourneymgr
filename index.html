@@ -1,5 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><title>Up Down Tournament Manager</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<title>Up Down Tournament Manager</title>
 <style>
 /* Layout: club-night scoreboard. Header bar, courts drawn top-down as a grid, queue column beside (stacks on phones). */
 :root{
@@ -109,7 +110,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .ud-focus{flex:none}
 body.timer-only header,body.timer-only .section-h,body.timer-only aside,body.timer-only #courts,body.timer-only #undoBar,body.timer-only #readonlyBanner{display:none!important}
 body.timer-only .layout{grid-template-columns:minmax(0,1fr)}
-body.timer-only #roundBar{min-height:calc(100vh - 118px);margin:0;flex-direction:column;flex-wrap:nowrap;justify-content:center;align-items:center;text-align:center;gap:18px;border:0;background:var(--bg);font-size:24px;padding:16px}
+body.timer-only #roundBar{min-height:calc(100vh - 60px);margin:0;flex-direction:column;flex-wrap:nowrap;justify-content:center;align-items:center;text-align:center;gap:18px;border:0;background:var(--bg);font-size:24px;padding:16px}
 body.timer-only #roundBar>span{font-size:clamp(20px,3.2vw,34px);max-width:40ch}
 body.timer-only .udbig{flex:none}
 body.timer-only .udbig .udlbl{font-size:clamp(14px,2vw,22px)}
@@ -283,6 +284,93 @@ table.res.small td{padding:6px}
 .adm-state.off{color:var(--muted);background:var(--bg);border:1px solid var(--line)}
 .adm-state.on{color:var(--sun-ink);background:var(--sun)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:calc(100% - 32px)}
+/* View tabs under the header, as in the Round Robin Tournament Manager */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);overflow-x:auto;scrollbar-width:none;margin-top:-6px}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;border:0;border-radius:10px 10px 0 0;background:transparent;color:var(--muted);font-weight:700;padding:10px 16px;margin-bottom:-2px;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button:hover{color:var(--ink);background:var(--surface)}
+.tabs button[aria-selected="true"]{color:var(--ink);background:var(--surface);border-bottom-color:var(--sun)}
+body.timer-only .tabs,body.timer-only .app-foot{display:none!important}
+body.big-view .layout{display:none!important}
+#bigView{display:flex;flex-direction:column;gap:14px;min-width:0}
+.hist-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.hist-head h2{font-family:var(--display);font-weight:800;font-size:28px;text-transform:uppercase;margin:0}
+.hist-head .note .lvl-tag{margin-left:4px}
+.hist-head .udbig{flex:none;padding:0;align-items:flex-end}
+.hist-head .udbig .udnum{font-size:clamp(40px,6vw,80px)}
+.stand-tbl td:last-child{white-space:nowrap}
+table.stand-tbl td .status{white-space:nowrap;font-size:11px}
+.setup-card{gap:14px}
+.setup-intro{margin:0;color:var(--muted)}
+.setup-form{display:flex;flex-direction:column;gap:14px}
+.setup-go{flex:none;min-width:220px;min-height:52px;font-size:16px}
+.bv-ready{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(26px,3.5vw,44px);color:var(--new)}
+.bv-grid{display:grid;gap:14px;align-content:start}
+.bv-court{background:var(--court);color:var(--court-line);border:3px solid var(--court-line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;min-height:clamp(140px,22vh,320px);min-width:0}
+.bv-court.off{background:transparent;color:var(--muted);border:2px dashed var(--line)}
+.bv-num{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(22px,2.6vw,40px);letter-spacing:.02em}
+.bv-team{font-weight:700;font-size:clamp(18px,2.4vw,38px);line-height:1.15;overflow-wrap:anywhere}
+.bv-team.won{color:var(--sun)}
+.bv-team.lost{opacity:.7}
+.bv-vs{font-size:clamp(12px,1.2vw,18px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.bv-res{margin-top:4px;background:var(--surface);color:var(--ink);border-radius:8px;padding:2px 10px;font-weight:700;font-size:clamp(13px,1.4vw,20px)}
+.bv-off{font-weight:600}
+.bv-sit{font-size:clamp(15px,1.8vw,26px);color:var(--muted)}
+.bv-sit strong{color:var(--ink)}
+@media (max-width:600px){.bv-grid{grid-template-columns:1fr!important}.bv-court{grid-row:auto!important;grid-column:auto!important}}
+.hist-wrap summary{cursor:pointer;font-weight:700;padding:6px 0}
+table.res th.hist-h{text-align:left;width:auto}
+table.res td.hist-t{text-align:left;white-space:normal;min-width:110px}
+table.res td.hist-t.hist-w{font-weight:700;color:var(--new)}
+table.res td.hist-s{text-align:center;white-space:nowrap;font-weight:700}
+.lvl-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;letter-spacing:.02em;padding:2px 9px;border-radius:999px;background:var(--new-bg);color:var(--new);border:1px solid var(--new);white-space:nowrap;vertical-align:1px}
+.lvl-tag.now{background:var(--new);color:var(--surface)}
+.te-block{display:flex;flex-direction:column;gap:10px;border-top:1px solid color-mix(in srgb,var(--new) 35%,transparent);padding-top:12px}
+.te-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.te-lbl{font-size:13px;font-weight:600;color:var(--muted);min-width:96px}
+.te-chips{display:flex;flex-wrap:wrap;gap:6px}
+.te-chips button{min-height:34px;min-width:40px;padding:4px 10px;border-radius:999px;font-size:13px}
+.te-chips button.on{background:var(--sun);border-color:var(--sun);color:var(--sun-ink)}
+.te-out{margin:0;font-size:14px;color:var(--ink)}
+.te-out .te-big{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;display:block}
+.te-warn{color:var(--win);font-weight:600}
+.hdr-help{display:inline-flex;align-items:center;align-self:center;box-sizing:border-box;min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);font-weight:600;text-decoration:none}
+.hdr-help:hover{border-color:var(--muted)}
+.app-foot{text-align:center;color:var(--muted);font-size:13px;padding-top:12px;border-top:1px solid var(--line)}
+.app-foot a,.app-foot button{color:var(--muted);font-weight:600;font-size:13px;text-decoration:underline;background:none;border:0;padding:0;min-height:0;cursor:pointer}
+.app-foot a:hover,.app-foot button:hover{color:var(--ink)}
+.app-foot a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.pin-forgot{align-self:center;background:none;border:0;min-height:36px;padding:4px 8px;color:var(--muted);font-weight:600;font-size:13px;text-decoration:underline}
+.pin-forgot:hover{color:var(--ink)}
+body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
+#helpView{max-width:860px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-left,0px)) 48px max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px;font-size:16px;line-height:1.55}
+#helpView .hv-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+#helpView h2{font-family:var(--display);text-transform:uppercase;line-height:1.05;margin:0 0 10px;font-weight:800;font-size:26px;letter-spacing:.02em}
+#helpView h3{font-family:var(--display);text-transform:uppercase;line-height:1.05;font-weight:700;font-size:19px;letter-spacing:.03em;margin:18px 0 6px}
+#helpView .hv-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+#helpView .hv-card p{margin:0 0 10px}
+#helpView .hv-card p:last-child{margin-bottom:0}
+#helpView .hv-toc{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+#helpView .hv-toc button{min-height:34px;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:600}
+#helpView ol,#helpView ul{margin:0 0 10px;padding-left:22px}
+#helpView li{margin-bottom:6px}
+#helpView li:last-child{margin-bottom:0}
+#helpView .k{display:inline-block;font-size:13px;font-weight:700;padding:1px 8px;border-radius:7px;border:1px solid var(--line);background:var(--bg);white-space:nowrap}
+#helpView .hv-note{background:var(--win-bg);border-left:4px solid var(--sun);border-radius:8px;padding:10px 14px;margin:12px 0 0}
+#helpView .diagram{display:flex;flex-direction:column;gap:8px;margin:14px 0 4px}
+#helpView .crt{display:grid;grid-template-columns:72px 1fr 1fr;gap:8px;align-items:center}
+#helpView .crt .num{background:var(--court);color:var(--court-line);border-radius:8px;font-family:var(--display);font-weight:800;text-transform:uppercase;text-align:center;padding:8px 0}
+#helpView .crt .mv{font-size:14px;padding:8px 10px;border-radius:8px}
+#helpView .mv.up{background:var(--new-bg);color:var(--new)}
+#helpView .mv.down{background:var(--win-bg);color:var(--win)}
+#helpView .mv.none{color:var(--muted);border:1px dashed var(--line)}
+#helpView dl{margin:0}
+#helpView dt{font-weight:700;margin-top:12px}
+#helpView dt:first-child{margin-top:0}
+#helpView dd{margin:2px 0 0}
+#helpView .hv-foot{color:var(--muted);font-size:14px;text-align:center;padding-top:6px}
+#helpView .hv-foot a{color:var(--muted);font-weight:600}
+@media (max-width:520px){#helpView .crt{grid-template-columns:56px 1fr}#helpView .crt .num{grid-row:span 2;align-self:stretch;display:flex;align-items:center;justify-content:center}}
 @media (prefers-reduced-motion:no-preference){.court-card{transition:border-color .2s}.toast{animation:up .2s ease-out}@keyframes up{from{opacity:0;transform:translate(-50%,8px)}}}
 </style>
 
@@ -334,13 +422,13 @@ table.res.small td{padding:6px}
   };
 })();
 </script>
-<nav id="viewTabs" class="view-tabs" aria-label="Views"></nav>
+
 <div class="wrap">
   <header>
     <div class="brand">
       <div class="ball" aria-hidden="true"></div>
       <div>
-        <h1>Up Down Tournament Manager</h1><div class="sub" style="font-weight:700;color:var(--win)">Offline app: data is saved on this computer</div>
+        <h1>Up Down Tournament Manager</h1>
         <div class="sub" id="subline">Connecting…</div>
       </div>
     </div>
@@ -348,9 +436,10 @@ table.res.small td{padding:6px}
       <span class="pill" id="sessPill">No session</span>
       <button id="endBtn" class="btn-danger" hidden>End session</button>
       <button id="adminBtn" class="btn-ghost">Admin</button>
-      <a class="hdr-help" href="help.html">Help</a>
+      <button type="button" id="helpBtn" class="hdr-help">Help</button>
     </div>
   </header>
+  <nav class="tabs" id="viewTabs" role="tablist" aria-label="Views"></nav>
 
   <div class="banner" id="readonlyBanner" hidden>
     <p>You're viewing the board live. To add your name, use the club device at the desk.</p>
@@ -389,10 +478,198 @@ table.res.small td{padding:6px}
       </div>
     </aside>
   </div>
-  <footer class="app-foot"><a href="help.html">Help</a> · <a href="https://github.com/cespartero/simpletourneymgr" target="_blank" rel="noopener">Source code on GitHub</a></footer>
+  <section id="bigView" hidden></section>
+  <footer class="app-foot"><button type="button" id="helpFoot">Help</button> · <a href="https://github.com/cespartero/simpletourneymgr" target="_blank" rel="noopener">Source code on GitHub</a></footer>
 </div>
 
-<div id="bigView" hidden></div>
+<div id="helpView" hidden>
+  <div class="hv-top">
+    <div class="brand">
+      <div class="ball" aria-hidden="true"></div>
+      <div>
+        <h1 tabindex="-1">Up Down Tournament Manager</h1>
+        <div class="sub">Help and how-to guide</div>
+      </div>
+    </div>
+    <button type="button" class="btn-sun" data-help-back>Back to the board</button>
+  </div>
+
+  <nav aria-label="Help contents">
+    <ul class="hv-toc">
+      <li><button type="button" data-help-go="hv-how">How it works</button></li>
+      <li><button type="button" data-help-go="hv-players">For players</button></li>
+      <li><button type="button" data-help-go="hv-start">Starting</button></li>
+      <li><button type="button" data-help-go="hv-rounds">Running rounds</button></li>
+      <li><button type="button" data-help-go="hv-scores">Results</button></li>
+      <li><button type="button" data-help-go="hv-standings">Standings</button></li>
+      <li><button type="button" data-help-go="hv-admin">Admin tools</button></li>
+      <li><button type="button" data-help-go="hv-devices">Devices</button></li>
+      <li><button type="button" data-help-go="hv-faq">Questions</button></li>
+    </ul>
+  </nav>
+
+  <section class="hv-card" id="hv-how">
+    <h2>How up and down works</h2>
+    <p>Everyone plays doubles, and every round starts and ends at the same time. After each round:</p>
+    <ul>
+      <li><b>Winners move one court toward court 1.</b></li>
+      <li><b>Losers move one court away from court 1.</b></li>
+      <li>Winners on court 1 stay on court 1. Losers on the last court stay there.</li>
+      <li><b>Partners change every round.</b> Where a court gets a winner and a loser coming in, they're paired together. Otherwise last round's partners are split up.</li>
+    </ul>
+    <div class="diagram" aria-label="Example with three courts">
+      <div class="crt"><div class="num">Ct 1</div><div class="mv none">Winners stay</div><div class="mv down">Losers go to court 2</div></div>
+      <div class="crt"><div class="num">Ct 2</div><div class="mv up">Winners go to court 1</div><div class="mv down">Losers go to court 3</div></div>
+      <div class="crt"><div class="num">Ct 3</div><div class="mv up">Winners go to court 2</div><div class="mv none">Losers stay</div></div>
+    </div>
+    <p>Over the night, the strongest players work their way to court 1. The board calls out anyone who has held court 1 for several rounds in a row.</p>
+  </section>
+
+  <section class="hv-card" id="hv-players">
+    <h2>For players</h2>
+    <ol>
+      <li>Type your name in the <b>Player List</b> box and tap <span class="k">Join</span>.</li>
+      <li>Wait for the admin to start. You'll be placed on a court in list order, starting from court 1.</li>
+      <li>Check the board each round to see your court and partner.</li>
+    </ol>
+    <p class="hv-note">Entries close once the tournament starts. Make sure everyone has joined first.</p>
+  </section>
+
+  <section class="hv-card" id="hv-start">
+    <h2>Starting a tournament</h2>
+    <ol>
+      <li>Get everyone onto the player list. You need at least 4 players.</li>
+      <li>Unlock admin: tap <span class="k">Admin</span> and enter the PIN (the first time, you'll choose one). The options appear in the <b>Setup tournament</b> box on the Board.</li>
+      <li>Choose the <b>round timing</b>:
+        <ul>
+          <li><b>Untimed</b>: each round ends when every court has a result.</li>
+          <li><b>Timed</b>: every round runs for a set time (minutes and seconds) after a 10 second setup.</li>
+        </ul>
+      </li>
+      <li>Choose the <b>match scores</b> option:
+        <ul>
+          <li><b>Capture scores</b>: enter each match's score. The higher score wins, and points show in the stats.</li>
+          <li><b>Winners only</b>: just tap the team that won. No scores are kept.</li>
+        </ul>
+      </li>
+      <li>Choose the <b>rounds to play</b>. The suggested numbers, where everyone ends on the same number of games, are one tap away, but you can pick any number from 1 to 30. The round bar then shows, for example, <b>Round 3 of 8</b>.</li>
+      <li>Check the summary. It tells you how many courts will be used and, if the numbers don't divide by 4, how many sit out each round.</li>
+      <li>Tap <span class="k">Start tournament</span>, then <span class="k">Start round 1</span> once everyone is on court.</li>
+    </ol>
+    <h3>Odd numbers and sit-outs</h3>
+    <p>Each court takes 4 players. Anyone left over sits out that round, and sit-outs take turns. Before you start, the <b>Round estimator</b> in the player list panel suggests how many rounds to plan so everyone finishes on the same number of games. Below it, the <b>Time estimator</b> works out roughly how long timed rounds will take: pick the number of rounds (the suggested ones are one tap away) and the time per round.</p>
+  </section>
+
+  <section class="hv-card" id="hv-rounds">
+    <h2>Running rounds</h2>
+    <dl>
+      <dt>Start round</dt>
+      <dd>Begins the round. In timed mode this starts the 10 second setup, then the countdown. A voice says "Get ready" and "Game start", and the board beeps as time runs out.</dd>
+      <dt>Pause and Resume</dt>
+      <dd>Stops and restarts the clock.</dd>
+      <dt>End round</dt>
+      <dd>In timed mode, collects every court's result at once.</dd>
+      <dt>End match</dt>
+      <dd>In untimed mode, each court ends its own match. The next round is set once every court has a result.</dd>
+      <dt>Round time</dt>
+      <dd>In timed mode, you can change the time for the next round before you start it.</dd>
+      <dt>Planned rounds</dt>
+      <dd>Once the planned number of rounds has been played, starting another round asks you first and offers to end the session instead.</dd>
+      <dt>Level rounds</dt>
+      <dd>When some players sit out each round, games only even out every few rounds. The round bar shows when everyone will next have played the same number of games, such as <b>Games level after round 10</b>. If everyone is level and you start another round, the app asks you to confirm first, tells you which round games will next be level, and offers to end the session instead.</dd>
+      <dt>Shuffle courts</dt>
+      <dd>Before a round starts, puts everyone due to play on a random court with random partners. Nobody stays on the court they last played on, and nobody is paired with their partner from their previous game. Players due to sit out keep sitting out. (With only one court in use, everyone stays on it but still gets a new partner.)</dd>
+      <dt>Page tabs</dt>
+      <dd>The tabs under the header switch between views: <b>Board</b>, <b>Standings</b>, <b>Match history</b>, and while a session is running <b>Courts</b>.</dd>
+      <dt>Courts tab</dt>
+      <dd>Shows every court in the layout set with <b>Arrange courts</b>, with team names large enough to read from across the hall, the round clock, and who is sitting out. It updates live as results come in.</dd>
+      <dt>Standings tab</dt>
+      <dd>The tournament standings so far: where each player is this round, wins, losses, points difference, average points per game, win percentage and last 5 results. Between sessions it shows the last tournament's final leaderboard.</dd>
+      <dt>Match history tab</dt>
+      <dd>Every match recorded this session, newest first, or the last session's matches between sessions.</dd>
+      <dt>Full screen timer</dt>
+      <dd>A button in the round bar. Shows a large timer on its own, handy for a screen beside the courts. Tap <span class="k">Show full board</span> to go back.</dd>
+    </dl>
+    <p class="hv-note">On phones and tablets, tap the screen once before the round starts so the browser allows the beeps and voice to play.</p>
+  </section>
+
+  <section class="hv-card" id="hv-scores">
+    <h2>Entering results</h2>
+    <ul>
+      <li><b>Capture scores:</b> enter both scores for every court. The higher score wins and moves up. If a court finishes level, choose which team moves up, and both teams record a draw.</li>
+      <li><b>Winners only:</b> tap the team that won on each court.</li>
+    </ul>
+    <p>Every court needs a result before the next round can begin. Made a mistake? Tap <span class="k">Undo</span> to step back the last result or shuffle.</p>
+  </section>
+
+  <section class="hv-card" id="hv-standings">
+    <h2>Standings and results</h2>
+    <dl>
+      <dt>Allocations</dt>
+      <dd>Who is on which court this round, who is sitting out, and what happened to each player last round.</dd>
+      <dt>Stats</dt>
+      <dd>Games played, won, drawn and lost, and win percentage. With scores captured, points won and lost, points difference and average points per game (<b>Avg pts</b>) too.</dd>
+      <dt>Streaks</dt>
+      <dd>Each player's current streak, best winning run and last 5 results.</dd>
+      <dt>History</dt>
+      <dd>Every match recorded this session, newest first: round, court, both teams and the score. After the session ends it's kept under the final leaderboard, in <b>Match history</b>.</dd>
+    </dl>
+    <p style="margin-top:12px">When you end the session, the final leaderboard moves to the <b>Standings</b> tab and the matches stay on the <b>Match history</b> tab. Use <span class="k">Copy results</span> on the Standings tab to paste the results into a message or post.</p>
+  </section>
+
+  <section class="hv-card" id="hv-admin">
+    <h2>Admin tools</h2>
+    <p>Tap <span class="k">Admin</span> and enter the PIN. Admin stays unlocked on that device for 30 minutes, then locks again on its own. The PIN is the same on every device.</p>
+    <dl>
+      <dt>Player List</dt>
+      <dd>Before the tournament, drag players to reorder the player list, or <span class="k">Remove</span> someone.</dd>
+      <dt>Start new session and End session</dt>
+      <dd>Start new session takes you to the Setup tournament box on the Board. Ending the session keeps the final leaderboard on the Standings tab.</dd>
+      <dt>Arrange courts</dt>
+      <dd>Set the number of columns and rows, then drag courts so the board matches your venue. Leave gaps for walkways.</dd>
+      <dt>Re-add last session's players</dt>
+      <dd>Between sessions, puts everyone from the last session back on the player list in one tap. Anyone already on the list is skipped.</dd>
+      <dt>Add test players</dt>
+      <dd>Fill the player list with up to 48 sample players to try the app out. They're named after an adjective and an animal, such as Brave Wombat, and words aren't repeated until all of them have been used.</dd>
+      <dt>Change PIN</dt>
+      <dd>Set a new admin PIN. It works on every device straight away.</dd>
+      <dt>Lock admin</dt>
+      <dd>Locks admin on this device straight away.</dd>
+      <dt>Full reset</dt>
+      <dd>Wipes everything, including players, results, the court layout and the admin PIN. Type <span class="k">RESET</span> to confirm.</dd>
+    </dl>
+  </section>
+
+  <section class="hv-card" id="hv-devices">
+    <h2>One board, every device</h2>
+    <ul>
+      <li>The board is shared live. Everyone who opens it from its claude.ai link sees the same courts, player list and results, and changes show everywhere straight away.</li>
+      <li>You need to be signed in to Claude to see the board. Private or incognito windows start signed out.</li>
+      <li>Some people may be able to view the board but not change it. They'll see a note saying so.</li>
+      <li>The page tab you're on and which standings tab is open are chosen per device, so a TV can show the Courts tab while the admin's phone shows the Board.</li>
+    </ul>
+  </section>
+
+  <section class="hv-card" id="hv-faq">
+    <h2>Common questions</h2>
+    <dl>
+      <dt>Can someone join once the tournament has started?</dt>
+      <dd>No. Entries close when it starts. End the session and start a new one to add people.</dd>
+      <dt>Why can't I start the next round?</dt>
+      <dd>Every court needs a result first. Check for a court with no score, or a draw where nobody has been chosen to move up.</dd>
+      <dt>I forgot the admin PIN.</dt>
+      <dd>Tap <span class="k">Admin</span>, then <b>Forgot the PIN?</b> under the PIN box. The app owner can enter their override PIN there to reset the board, which also clears the admin PIN so a new one can be set. This wipes the session, player list and saved results too.</dd>
+      <dt>The beeps or voice don't play.</dt>
+      <dd>Turn the device volume up, tap the screen before starting the round, and keep the screen on. Some phones pause sound when the screen locks.</dd>
+    </dl>
+  </section>
+
+  <div class="hv-foot">
+    <button type="button" class="btn-ghost" data-help-back>Back to the board</button>
+    <p><a href="https://github.com/cespartero/simpletourneymgr" target="_blank" rel="noopener">Source code on GitHub</a></p>
+  </div>
+</div>
+
 <div id="modalRoot"></div>
 
 <script>
@@ -538,6 +815,8 @@ table.res.small td{padding:6px}
   // When there are more players than spaces, the people who have sat out least sit next, so games stay level.
   const isUD = (s) => !!(s.session && s.session.mode === "ud");
   const isTour = (s) => isRR(s) || isUD(s);
+  // Whether this up and down session records match scores (older sessions always did).
+  const udScored = (s) => !isUD(s) || s.session.ud.scores !== false;
   const shuf = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   function bestTeams(four, info) {
     const parts = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]];
@@ -580,6 +859,7 @@ table.res.small td{padding:6px}
       const dr = !!c.done.draw, ms = !ud.timed && c.lastMatchMs != null ? c.lastMatchMs : null;
       W0.forEach(id => { if (s.players[id]) s.players[id].last = { won: true, from: c.num, draw: dr, ms }; });
       L0.forEach(id => { if (s.players[id]) s.players[id].last = { won: false, from: c.num, draw: dr, ms }; });
+      [W0, L0].forEach(T => T.forEach(id => { if (s.players[id]) s.players[id].lastPartner = T.find(x => x !== id) || null; }));
     }
     ud.sitting.forEach(id => { if (s.players[id]) s.players[id].last = { sat: true }; });
     for (const c of courts) {
@@ -923,6 +1203,7 @@ table.res.small td{padding:6px}
     const courts = s.session.courts.filter(c => c.teamA && !c.done).sort((a, b) => a.num - b.num);
     if (!courts.length) return;
     const endAt = Date.now(), title = udRoundOf(s), adv = {};
+    if (!udScored(s)) return endRoundWinnersUD(courts, endAt, title);
     modal(`
       <h3>End ${esc(title)}</h3>
       <p>Enter the score for every court. The higher score wins and moves up. If a court is level, choose which team moves up.</p>
@@ -985,6 +1266,51 @@ table.res.small td{padding:6px}
       });
     });
   }
+  // Timed rounds without scores: tap the winning team on each court.
+  function endRoundWinnersUD(courts, endAt, title) {
+    const win = {};
+    modal(`
+      <h3>End ${esc(title)}</h3>
+      <p>Tap the team that won on every court. Winners move up, the others move down.</p>
+      <form id="erForm" style="display:flex;flex-direction:column;gap:12px">
+        ${courts.map(c => `<div class="er-court"><div class="rr-h">Court ${c.num}</div>
+          <div class="adv"><span class="adv-q">Who won?</span>
+            <div class="adv-sw" role="radiogroup" aria-label="Winning team on court ${c.num}">
+              <button type="button" role="radio" aria-checked="false" data-ew="A" data-c="${c.num}">${names(c.teamA)}</button>
+              <button type="button" role="radio" aria-checked="false" data-ew="B" data-c="${c.num}">${names(c.teamB)}</button>
+            </div></div></div>`).join("")}
+        <p class="note" id="erLeft"></p>
+        <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun" id="erGo" disabled>Save all results</button></div>
+      </form>`, (close) => {
+      const check = () => {
+        $("erForm").querySelectorAll("[data-ew]").forEach(btn => { const on = win[btn.dataset.c] === btn.dataset.ew; btn.classList.toggle("on", on); btn.setAttribute("aria-checked", on ? "true" : "false"); });
+        const left = courts.filter(c => !win[c.num]).length;
+        $("erLeft").textContent = left ? `${left} ${left === 1 ? "court" : "courts"} still to choose.` : "All courts done.";
+        $("erGo").disabled = left > 0;
+        return !left;
+      };
+      $("erForm").querySelectorAll("[data-ew]").forEach(btn => btn.addEventListener("click", () => { win[btn.dataset.c] = btn.dataset.ew; check(); }));
+      check();
+      $("erForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!check()) return;
+        close();
+        let label = "";
+        const ok = await mutate((s2, now) => {
+          if (!isUD(s2) || s2.session.ud.state !== "playing") return false;
+          const prev = JSON.parse(JSON.stringify({ session: s2.session, players: s2.players }));
+          label = udRoundOf(s2);
+          s2.lastAction = { batch: true, label, winners: [], at: now, prev };
+          for (const c0 of courts) {
+            const c = s2.session.courts.find(x => x.num === c0.num);
+            if (c && c.teamA && !c.done) udRecord(s2, c, win[c0.num], undefined, undefined, endAt, false);
+          }
+          if (udFinishIfDone(s2)) s2.lastAction.roundEnded = true;
+        });
+        if (ok) toast(`${label} results saved`);
+      });
+    });
+  }
 
   // Shuffle the coming round: everyone due to play is placed on a random court with random partners.
   // Players already due to sit out keep sitting out.
@@ -1018,7 +1344,16 @@ table.res.small td{padding:6px}
         }
         if (!best || cost < best.cost) best = { cost, seats };
       }
-      courts.forEach(c => { const f = shuf(best.seats[c.num]); c.teamA = [f[0], f[1]]; c.teamB = [f[2], f[3]]; });
+      // Teams: never pair two players who partnered each other in their previous game. One of the three
+      // ways to split four players always avoids that, because each player has only one previous partner.
+      const lp = (id) => s.players[id] && s.players[id].lastPartner;
+      const again = (t) => lp(t[0]) === t[1] || lp(t[1]) === t[0];
+      courts.forEach(c => {
+        const f = shuf(best.seats[c.num].slice());
+        const splits = shuf([[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]).map(([x, y]) => [x.map(i => f[i]), y.map(i => f[i])]);
+        const pick = splits.find(([A, B]) => !again(A) && !again(B)) || splits[0];
+        c.teamA = pick[0]; c.teamB = pick[1];
+      });
       // Remember where each player was slotted before the first shuffle this round, to show "from" and "to".
       pool.forEach(id => { const p = s.players[id]; if (p) p.last = { ...(p.last || {}), shuffled: true, shufFrom: p.last && p.last.shuffled && p.last.shufFrom ? p.last.shufFrom : slated[id] }; });
     });
@@ -1048,9 +1383,9 @@ table.res.small td{padding:6px}
   function confirmStartUD(btn) {
     const s = state;
     if (!isUD(s) || s.session.ud.state !== "ready") return;
-    const ud = s.session.ud, lv = udLevel(s);
+    const ud = s.session.ud, lv = udLevel(s), typed = typedRoundSecs();
     const level = lv.sit && lv.evenNow, planDone = !!ud.target && ud.completed >= ud.target;
-    if (!level && !planDone) { btn.disabled = true; return startUDRound(); }
+    if (!level && !planDone) { btn.disabled = true; return startUDRound(typed); }
     const why = [];
     if (planDone) why.push(`You planned <strong>${ud.target} ${ud.target === 1 ? "round" : "rounds"}</strong>, and ${ud.completed === ud.target ? "all of them have" : `${ud.completed} have`} been played.`);
     if (level) why.push(`Everyone has played the same number of games at this round: <strong>${lv.games} ${lv.games === 1 ? "game" : "games"} each</strong> after round ${ud.completed}.`);
@@ -1063,15 +1398,32 @@ table.res.small td{padding:6px}
         <button type="button" class="btn-danger" id="lvEnd">End session instead</button>
         <button type="button" data-close>Not yet</button>
       </div>`, (close) => {
-      $("lvGo").addEventListener("click", () => { close(); startUDRound(); });
+      $("lvGo").addEventListener("click", () => { close(); startUDRound(typed); });
       $("lvEnd").addEventListener("click", () => { close(); endSession(); });
     });
   }
-  async function startUDRound() {
+  // Round time for the coming round, as typed in the round bar's Round time boxes (null when they aren't showing).
+  function typedRoundSecs() {
+    if (!$("udTmMin")) return null;
+    const m = Math.max(0, Math.min(90, parseInt($("udTmMin").value, 10) || 0)), sec = Math.max(0, Math.min(59, parseInt($("udTmSec").value, 10) || 0));
+    return Math.max(10, m * 60 + sec);
+  }
+  // Saves a new round time for the coming round (timed sessions, before the round starts) and remembers it for next time.
+  async function setUDTime(secs) {
+    secs = Math.max(10, Math.min(90 * 60, secs | 0));
+    const ok = await mutate((s) => {
+      if (!isUD(s) || s.session.ud.state !== "ready" || !s.session.ud.timed || udSecs(s.session.ud) === secs) return false;
+      s.session.ud.seconds = secs; delete s.session.ud.minutes;
+    });
+    if (ok) toast(`Round time set to ${fmtMS(secs)}`);
+    if (secs !== settings.udSeconds) { try { await settingsRef.set({ ...settings, udSeconds: secs }); } catch {} }
+  }
+  async function startUDRound(typedSecs) {
     let label = "";
     const ok = await mutate((s, now) => {
       if (!isUD(s) || s.session.ud.state !== "ready") return false;
       const ud = s.session.ud;
+      if (ud.timed && typedSecs) { ud.seconds = typedSecs; delete ud.minutes; }
       ud.state = "playing";
       ud.startAt = now + (ud.timed ? 10000 : 0);
       ud.endAt = ud.timed ? ud.startAt + udSecs(ud) * 1000 : null;
@@ -1081,7 +1433,7 @@ table.res.small td{padding:6px}
     });
     if (ok) toast(`${label} started`);
   }
-  async function startUpDown(n, timed, seconds) {
+  async function startUpDown(n, timed, seconds, scores) {
     const ids = waiting(state);
     if (ids.length < 4) return toast("Up and down needs at least 4 players in the player list.");
     let changed = false;
@@ -1089,9 +1441,10 @@ table.res.small td{padding:6px}
       if (waiting(s).join() !== ids.join() || Object.keys(s.players).length !== ids.length) { changed = true; return false; }
       delete s.lastAction; delete s.lastSummary;
       s.session = { mode: "ud", startedAt: now, courts: emptyCourts(n) };
-      Object.values(s.players).forEach(p => { delete p.sitOut; delete p.court; delete p.last; delete p.c1; delete p.hist; p.status = "ud"; p.games = 0; p.wins = 0; p.pf = 0; p.pa = 0; p.top = 0; });
+      Object.values(s.players).forEach(p => { delete p.sitOut; delete p.court; delete p.last; delete p.lastPartner; delete p.c1; delete p.hist; p.status = "ud"; p.games = 0; p.wins = 0; p.pf = 0; p.pa = 0; p.top = 0; });
       udInitial(s, ids, timed, seconds);
       if (pendingTarget) s.session.ud.target = pendingTarget;
+      s.session.ud.scores = scores !== false;
     });
     if (changed) toast("Someone joined or left while the courts were being set. Start again.");
     else if (ok) toast("Up and down started. Press Start round 1 when everyone is on court.");
@@ -1173,7 +1526,7 @@ table.res.small td{padding:6px}
       estSecs = Math.max(10, m * 60 + sc);
       $("estOut").innerHTML = timeEstOutHtml(timeEstimate(qn, courts));
     };
-    ["estMin", "estSec"].forEach(id => { $(id).addEventListener("input", readTime); $(id).addEventListener("change", () => { readTime(); render(); }); });
+    ["estMin", "estSec"].forEach(id => { $(id).addEventListener("input", readTime); $(id).addEventListener("change", readTime); });
   }
 
   async function setCourtCount(n) {
@@ -1184,98 +1537,107 @@ table.res.small td{padding:6px}
     try { await settingsRef.set(settings); } catch (e) { fail(e); }
   }
 
+  // ---------- tournament setup (in the Setup tournament box while no session is running) ----------
+  // The form is built once and kept, so typing or picking an option is never wiped by a live update.
+  let setupCard = null, startRoundsTouched = false, setupTimeTouched = false;
+  function setupCardEl() {
+    if (setupCard) return setupCard;
+    const el = document.createElement("div");
+    el.className = "court-card setup-card"; el.style.gridColumn = "1/-1";
+    el.innerHTML = `
+      <p class="setup-intro"></p>
+      <div class="row setup-unlock" style="flex:none;justify-content:flex-start" hidden><button type="button" class="btn-sun" id="setupUnlock" style="flex:none">Unlock admin</button></div>
+      <form id="startForm" class="setup-form" autocomplete="off">
+        <fieldset class="modes" id="modePick" hidden><legend>Session type</legend>
+          <label class="mode"><input type="radio" name="mode" value="ud" checked><span><b>Court up down tournament</b></span></label>
+        </fieldset>
+        <fieldset class="modes" id="udOpts"><legend>Round timing</legend>
+          <div class="row" style="flex:none">
+            <label class="mode"><input type="radio" name="timing" value="untimed" checked><span><b>Untimed</b>Each round ends when every court has a result.</span></label>
+            <label class="mode"><input type="radio" name="timing" value="timed"><span><b>Timed</b>Every round runs for a set time after a 10 second setup.</span></label>
+          </div>
+          <div id="udMinWrap" class="time-pick" hidden><span class="tp-lbl">Time per round</span>
+            <label>Minutes<input type="number" id="udMinutes" min="0" max="90" inputmode="numeric"></label>
+            <label>Seconds<input type="number" id="udSeconds" min="0" max="59" step="5" inputmode="numeric"></label>
+          </div>
+        </fieldset>
+        <fieldset class="modes" id="udScoreOpts"><legend>Match scores</legend>
+          <div class="row" style="flex:none">
+            <label class="mode"><input type="radio" name="scoring" value="scores"><span><b>Capture scores</b>Enter each match's score. The higher score wins, and points show in the stats.</span></label>
+            <label class="mode"><input type="radio" name="scoring" value="winner"><span><b>Winners only</b>Just tap the team that won. No scores are kept.</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="modes" id="udRoundsOpts"><legend>Rounds to play</legend><div id="udRoundsBox"></div></fieldset>
+        <input type="hidden" id="courtCount">
+        <p class="note" id="modeNote"></p>
+        <div class="row" style="flex:none;justify-content:flex-start"><button type="submit" class="btn-sun setup-go" id="startGo">Start tournament</button></div>
+      </form>`;
+    const form = el.querySelector("#startForm");
+    // Choices start from the last ones used; after that they're left as the admin sets them.
+    const secs = settings.udSeconds || (settings.udMinutes || 12) * 60;
+    el.querySelector("#udMinutes").value = Math.floor(secs / 60);
+    el.querySelector("#udSeconds").value = secs % 60;
+    form.scoring.value = settings.udScores === false ? "winner" : "scores";
+    form.addEventListener("change", updateSetup);
+    ["udMinutes", "udSeconds"].forEach(id => el.querySelector("#" + id).addEventListener("input", () => { setupTimeTouched = true; }));
+    el.querySelector("#udRoundsBox").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-sr-step],[data-sr-pick]"); if (!b) return;
+      startRoundsTouched = true;
+      startRounds = b.dataset.srPick ? +b.dataset.srPick : Math.max(1, Math.min(30, startRounds + +b.dataset.srStep));
+      updateSetup();
+    });
+    el.querySelector("#setupUnlock").addEventListener("click", () => requirePin("Enter the admin PIN to set up a new tournament.", () => render()));
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const go = async () => {
+        if (!updateSetup()) return;
+        const n = setupCourts(), timed = form.timing.value === "timed";
+        pendingTarget = startRounds;
+        const seconds = Math.max(10, Math.min(90 * 60, (parseInt($("udMinutes").value, 10) || 0) * 60 + Math.min(59, parseInt($("udSeconds").value, 10) || 0))) || 720;
+        const scores = form.scoring.value !== "winner";
+        const patch = {};
+        if (timed && seconds !== settings.udSeconds) patch.udSeconds = seconds;
+        if (scores !== (settings.udScores !== false)) patch.udScores = scores;
+        if (Object.keys(patch).length) { try { await settingsRef.set({ ...settings, ...patch }); } catch {} }
+        startRoundsTouched = false; startRounds = null; setupTimeTouched = false;
+        startUpDown(n, timed, seconds, scores);
+      };
+      if (isAdmin()) go(); else requirePin("Enter the admin PIN to start the tournament.", go);
+    });
+    setupCard = el;
+    return el;
+  }
+  const setupCourts = () => Math.max(1, Math.min(12, settings.courtCount || 4));
+  // Refreshes the setup box for the current players and choices. Returns true when the tournament can start.
+  function updateSetup() {
+    const form = $("startForm");
+    if (!form) return false;
+    const courts = setupCourts(), qn = waiting(state).length, count = Object.keys(state.players).length;
+    $("courtCount").value = courts;
+    $("udMinWrap").hidden = form.timing.value !== "timed";
+    if (!setupTimeTouched && estSecs != null) { $("udMinutes").value = Math.floor(estSecs / 60); $("udSeconds").value = estSecs % 60; }
+    // Rounds picker: suggested rounds (where games come out level) are one tap away; any number 1 to 30 can be picked.
+    const sug = suggestedRounds(qn, courts);
+    if (!startRoundsTouched || startRounds == null) startRounds = estRounds != null ? estRounds : (sug.list[0] || 8);
+    const r = startRounds, uneven = qn >= 4 && sug.cycle > 1 && r % sug.cycle !== 0;
+    $("udRoundsBox").innerHTML = `<div class="te-row"><div class="arr-ctl"><button type="button" data-sr-step="-1" aria-label="One round fewer">−</button><b>${r}</b><span>${r === 1 ? "round" : "rounds"}</span><button type="button" data-sr-step="1" aria-label="One round more">+</button></div>${sug.list.length ? `<div class="te-chips" role="group" aria-label="Suggested rounds">${sug.list.map(x => `<button type="button" data-sr-pick="${x}" class="${x === r ? "on" : ""}" aria-pressed="${x === r}">${x}</button>`).join("")}</div>` : ""}</div>
+      <p class="note" style="margin-top:6px">${uneven ? `<span class="te-warn">With ${r} rounds, some players will have played one game fewer. Games are level every ${sug.cycle} rounds.</span> ` : ""}After round ${r}, the app asks before playing another round.</p>`;
+    const note = $("modeNote"), btn = $("startGo");
+    if (qn < 4 || qn !== count) {
+      note.textContent = qn < 4 ? `${qn} ${qn === 1 ? "player is" : "players are"} on the player list. Up and down needs at least 4, so add everyone first.` : "Some players are still on court. Wait until every court is free.";
+      btn.disabled = true; return false;
+    }
+    const used = Math.min(courts, Math.floor(qn / 4)), sit = qn - used * 4, cy = udCycle(qn, used * 4);
+    const evenTxt = sit ? ` ${sit} sit out each round, taking turns. Everyone has played the same number of games after every ${cy.rounds} rounds (${cy.games} ${cy.games === 1 ? "game" : "games"} each).` : " Everyone plays every round.";
+    note.textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"} (change the courts available in the Round estimator), placed in list order from court 1. Check everyone is in: nobody can be added once it starts.${evenTxt}${courts > used ? ` Only ${used} of ${courts} courts can be filled.` : ""}`;
+    btn.disabled = false;
+    return true;
+  }
+  // Admin menu "Start new session": unlock if needed, then go to the Setup tournament box.
   function startSession() {
-    requirePin("Enter the admin PIN to start a new session.", () => {
-      const def = settings.courtCount || 4;
-      const count = Object.keys(state.players).length;
-      modal(`
-        <h3>${ONLY_UD ? "Start up and down" : "Start session"}</h3>
-        <form id="startForm" style="display:flex;flex-direction:column;gap:12px">
-          <fieldset class="modes" id="modePick" ${ONLY_UD ? "hidden" : ""}><legend>Session type</legend>
-            <label class="mode"><input type="radio" name="mode" value="std"${ONLY_UD ? "" : " checked"}><span><b>Court allocation mode</b>Players queue and rotate on as courts free up. People can join all night.</span></label>
-            <label class="mode"><input type="radio" name="mode" value="rr"><span><b>Round robin tournament</b>Everyone plays against everyone at least once, with partners rotating. Entries close when it starts.</span></label>
-            <label class="mode"><input type="radio" name="mode" value="ud"${ONLY_UD ? " checked" : ""}><span><b>Court up down tournament</b>Rounds start and end together. Winners move toward court 1, losers move away, and partners are mixed every round. Entries close when it starts.</span></label>
-          </fieldset>
-          <fieldset class="modes" id="udOpts" hidden><legend>Round timing</legend>
-            <div class="row" style="flex:none">
-              <label class="mode"><input type="radio" name="timing" value="untimed" checked><span><b>Untimed</b>Each round ends when every court has a result.</span></label>
-              <label class="mode"><input type="radio" name="timing" value="timed"><span><b>Timed</b>Every round runs for a set time after a 10 second setup.</span></label>
-            </div>
-            <div id="udMinWrap" class="time-pick" hidden><span class="tp-lbl">Time per round</span>
-              <label>Minutes<input type="number" id="udMinutes" min="0" max="90" inputmode="numeric" value="${Math.floor((settings.udSeconds || (settings.udMinutes || 12) * 60) / 60)}"></label>
-              <label>Seconds<input type="number" id="udSeconds" min="0" max="59" step="5" inputmode="numeric" value="${(settings.udSeconds || 0) % 60}"></label>
-            </div>
-          </fieldset>
-          <fieldset class="modes" id="udRoundsOpts" hidden><legend>Rounds to play</legend><div id="udRoundsBox"></div></fieldset>
-          <label ${ONLY_UD ? "hidden" : ""}>Courts available<input type="number" id="courtCount" min="1" max="12" value="${def}"></label>
-          <p class="note" id="modeNote"></p>
-          <div class="row"><button type="button" data-close>Cancel</button><button type="submit" class="btn-sun" id="startGo">Start session</button></div>
-        </form>`, (close) => {
-        const form = $("startForm");
-        startRounds = null;
-        // Rounds picker: suggested rounds (where games come out level) are one tap away; any number 1 to 30 can be picked.
-        const drawStartRounds = () => {
-          const qn0 = waiting(state).length, c0 = Math.max(1, Math.min(12, parseInt($("courtCount").value, 10) || def));
-          const sug = suggestedRounds(qn0, c0);
-          if (startRounds == null) startRounds = estRounds != null ? estRounds : (sug.list[0] || 8);
-          const r = startRounds, uneven = qn0 >= 4 && sug.cycle > 1 && r % sug.cycle !== 0;
-          $("udRoundsBox").innerHTML = `<div class="te-row"><div class="arr-ctl"><button type="button" data-sr-step="-1" aria-label="One round fewer">\u2212</button><b>${r}</b><span>${r === 1 ? "round" : "rounds"}</span><button type="button" data-sr-step="1" aria-label="One round more">+</button></div>${sug.list.length ? `<div class="te-chips" role="group" aria-label="Suggested rounds">${sug.list.map(x => `<button type="button" data-sr-pick="${x}" class="${x === r ? "on" : ""}" aria-pressed="${x === r}">${x}</button>`).join("")}</div>` : ""}</div>
-            <p class="note" style="margin-top:6px">${uneven ? `<span class="te-warn">With ${r} rounds, some players will have played one game fewer. Games are level every ${sug.cycle} rounds.</span> ` : ""}After round ${r}, the app asks before playing another round.</p>`;
-          $("udRoundsBox").querySelectorAll("[data-sr-step]").forEach(b => b.addEventListener("click", () => { startRounds = Math.max(1, Math.min(30, startRounds + +b.dataset.srStep)); drawStartRounds(); }));
-          $("udRoundsBox").querySelectorAll("[data-sr-pick]").forEach(b => b.addEventListener("click", () => { startRounds = +b.dataset.srPick; drawStartRounds(); }));
-        };
-        const note = () => {
-          const rr = form.mode.value === "rr", ud = form.mode.value === "ud";
-          const courts = Math.max(1, Math.min(12, parseInt($("courtCount").value, 10) || def));
-          $("udOpts").hidden = !ud;
-          $("udMinWrap").hidden = !(ud && form.timing.value === "timed");
-          $("udRoundsOpts").hidden = !ud; if (ud) drawStartRounds();
-          if (ud) {
-            $("startGo").textContent = "Start tournament";
-            const qn = waiting(state).length;
-            if (qn < 4 || qn !== count) {
-              $("modeNote").textContent = qn < 4 ? `${qn} ${qn === 1 ? "player is" : "players are"} in the player list. Up and down needs at least 4, so add everyone first.` : "Some players are still on court. Wait until every court is free.";
-              $("startGo").disabled = true; return;
-            }
-            const used = Math.min(courts, Math.floor(qn / 4)), sit = qn - used * 4;
-            const cy = udCycle(qn, used * 4);
-            const evenTxt = sit ? ` ${sit} sit out each round, taking turns. Everyone has played the same number of games after every ${cy.rounds} rounds (${cy.games} ${cy.games === 1 ? "game" : "games"} each), so plan for ${cy.rounds}, ${cy.rounds * 2} or ${cy.rounds * 3} rounds.` : " Everyone plays every round.";
-            $("modeNote").textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"}, placed in list order from court 1. Check everyone is in: nobody can be added once it starts.${evenTxt}`;
-            // Suggest the fewest rounds that even out games, by trying fewer courts (more sit-outs).
-            const fewestFor = (n, maxC) => { let b = null; for (let c = Math.min(maxC, Math.floor(n / 4)); c >= 1; c--) { const r = udCycle(n, c * 4).rounds; if (!b || r < b.rounds) b = { c, rounds: r, sit: n - c * 4 }; } return b; };
-            const maxUseful = Math.floor(qn / 4), cs = (n) => `${n} ${n === 1 ? "court" : "courts"}`;
-            if (courts > maxUseful) $("modeNote").textContent += ` Only ${cs(maxUseful)} can be filled with ${qn} players.`;
-            $("startGo").disabled = false; return;
-          }
-          if (!rr) { $("modeNote").textContent = "All courts fill from the player list straight away."; $("startGo").disabled = false; $("startGo").textContent = "Start session"; return; }
-          $("startGo").textContent = "Start tournament";
-          if (count < 4) {
-            $("modeNote").textContent = `${count} ${count === 1 ? "player is" : "players are"} in the player list. A tournament needs at least 4, so add everyone first.`;
-            $("startGo").disabled = true; return;
-          }
-          const used = Math.min(courts, Math.floor(count / 4));
-          const sits = count > used * 4 ? ` ${count - used * 4} sit out each round, taking turns.` : "";
-          $("modeNote").textContent = `${count} players in the player list. Check everyone is in: nobody can be added once it starts. Each round uses ${used} ${used === 1 ? "court" : "courts"}.${sits}`;
-          $("startGo").disabled = false;
-        };
-        form.addEventListener("change", note); $("courtCount").addEventListener("input", note); note();
-        form.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const mode = form.mode.value;
-          const n = Math.max(1, Math.min(12, parseInt($("courtCount").value, 10) || def));
-          const timed = form.timing.value === "timed";
-          pendingTarget = form.mode.value === "ud" ? startRounds : null;
-          const seconds = Math.max(10, Math.min(90 * 60, (parseInt($("udMinutes").value, 10) || 0) * 60 + Math.min(59, parseInt($("udSeconds").value, 10) || 0))) || 720;
-          close();
-          const patch = {};
-          if (n !== settings.courtCount) patch.courtCount = n;
-          if (mode === "ud" && timed && seconds !== settings.udSeconds) patch.udSeconds = seconds;
-          if (Object.keys(patch).length) { try { await settingsRef.set({ ...settings, ...patch }); } catch {} }
-          if (mode === "rr") startRoundRobin(n);
-          else if (mode === "ud") startUpDown(n, timed, seconds);
-          else startStandard(n);
-        });
-      });
+    requirePin("Enter the admin PIN to set up a new tournament.", () => {
+      goView("board");
+      setTimeout(() => { const f = $("startForm"); f && f.scrollIntoView({ block: "start", behavior: "smooth" }); }, 0);
     });
   }
   async function startStandard(n) {
@@ -1328,7 +1690,7 @@ table.res.small td{padding:6px}
             }
             s.session = null; s.players = {}; delete s.lastAction;
           });
-          if (ok) toast("Session ended. Results are on the board.");
+          if (ok) toast("Session ended. The final results are on the Standings tab.");
         });
       });
     });
@@ -1507,7 +1869,7 @@ table.res.small td{padding:6px}
   function overrideReset() {
     modal(`
       <h3>Override reset</h3>
-      <p>Forgotten the admin PIN? The app owner can reset the board with the override PIN. This clears everything, the same as a full reset: the session, the player list, saved results, the court layout and the admin PIN. The next person to tap Admin sets a new PIN. This can't be undone.</p>
+      <p>Forgotten the admin PIN? The app owner can reset the board with the override PIN. This clears everything, the same as a full reset: the session, the player list, saved results, the court layout and the admin PIN, on every device. The next person to tap Admin sets a new PIN. This can't be undone.</p>
       <form id="ovForm" style="display:flex;flex-direction:column;gap:10px">
         <label>Override PIN<input type="password" id="ovPin" inputmode="numeric" maxlength="20" autocomplete="off"></label>
         <label>Type RESET to confirm<input type="text" id="ovWord" autocomplete="off" autocapitalize="characters"></label>
@@ -1520,6 +1882,7 @@ table.res.small td{padding:6px}
       $("ovForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!ready()) return;
+        if (!canWrite) { err.textContent = "This device can view the board but can't change it."; err.hidden = false; return; }
         go.disabled = true; go.textContent = "Checking…";
         let ok = false;
         try { ok = await checkOverride($("ovPin").value.trim()); }
@@ -1788,32 +2151,26 @@ table.res.small td{padding:6px}
     render();
     window.scrollTo(0, 0);
   }
-  // Page tabs: Board, Courts, Leaderboard, Timer (while a session runs) and Help. The view is per device.
+  // Page tabs, as in the Round Robin Tournament Manager: Board, Standings, Courts (while a session runs)
+  // and Match history. The view is chosen per device.
   const helpOpen = () => document.body.classList.contains("show-help");
   function currentView() {
-    const ud = isUD(state) && !arranging;
-    return helpOpen() ? "help" : ud && bigView ? bigView : ud && timerOnly ? "timer" : "board";
+    if (helpOpen()) return "help";
+    if (bigView === "courts" && !(isUD(state) && !arranging)) return "board";
+    return bigView || "board";
   }
   function goView(v) {
-    if (v === "help") { if ($("helpView") && typeof showHelp === "function") showHelp(true); else location.href = "help.html"; return; }
     if (helpOpen() && typeof showHelp === "function") showHelp(false);
-    if (v === "timer") return setTimerOnly(true);
-    if (v === "courts" || v === "stats") return setBigView(v);
-    bigView = null;
-    if (timerOnly) setTimerOnly(false); else { render(); window.scrollTo(0, 0); }
+    bigView = v === "board" || v === "help" ? null : v;
+    if (timerOnly) { timerOnly = false; try { localStorage.setItem("suns-timer-only", "0"); } catch {} }
+    render(); window.scrollTo(0, 0);
   }
   function renderTabs() {
     const nav = $("viewTabs"); if (!nav) return;
-    const cur = currentView(), ud = isUD(state) && !arranging, inPage = !!$("helpView");
-    const tabs = [["board", "Board"], ...(ud ? [["courts", "Courts"], ["stats", "Leaderboard"], ["timer", "Timer"]] : []), ["help", "Help"]];
-    const fsOk = !!(document.documentElement.requestFullscreen && document.exitFullscreen);
-    nav.innerHTML = `<div class="vt-list" role="tablist">${tabs.map(([k, l]) => k === "help" && !inPage
-        ? `<a class="vt" href="help.html">${l}</a>`
-        : `<button type="button" role="tab" class="vt${k === cur ? " on" : ""}" aria-selected="${k === cur}" data-view="${k}">${l}</button>`).join("")}</div>${fsOk ? `<button type="button" class="vt-fs" id="vtFs">${document.fullscreenElement ? "Exit full screen" : "Full screen"}</button>` : ""}`;
+    const cur = currentView(), ud = isUD(state) && !arranging;
+    const tabs = [["board", "Board"], ["stats", "Standings"], ...(ud ? [["courts", "Courts"]] : []), ["history", "Match history"]];
+    nav.innerHTML = tabs.map(([k, l]) => `<button type="button" role="tab" data-view="${k}" aria-selected="${k === cur}">${l}</button>`).join("");
     nav.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => goView(b.dataset.view)));
-    $("vtFs") && $("vtFs").addEventListener("click", () => {
-      try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else document.documentElement.requestFullscreen().catch(() => {}); } catch {}
-    });
   }
   async function moveInQueue(id, toIndex) {
     let moved = false;
@@ -1948,6 +2305,7 @@ table.res.small td{padding:6px}
     s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
     const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, pf: p.pf || 0, pa: p.pa || 0, top: p.top || 0, draws: p.draws || 0, court: where[id] || null, last: p.last || null, hist: p.hist || [], c1: p.c1 || 0 })) });
     const page = ["stats", "streaks", "history"].includes(standingsPage) ? standingsPage : "alloc";
+    const scoredUD = udScored(s);
     const tabs = `<div class="sp-tabs" role="tablist" aria-label="Standings pages">
         <button type="button" role="tab" data-sp="alloc" aria-selected="${page === "alloc"}" class="${page === "alloc" ? "on" : ""}">Allocations</button>
         <button type="button" role="tab" data-sp="stats" aria-selected="${page === "stats"}" class="${page === "stats" ? "on" : ""}">Stats</button>
@@ -1957,15 +2315,15 @@ table.res.small td{padding:6px}
     const body = page === "history" ? histTableHtml(s.session.history) : page === "streaks" ? streaksHtml(rows) : page === "alloc"
       ? `<thead><tr><th>#</th><th>Player</th><th>Round ${ud.round}</th><th>Last round</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td class="rd">${r.court ? `<span class="status s-new">Allocated · Ct ${r.court}</span>` : `<span class="status s-sit">Sit out</span>`}</td><td class="lr">${lastTxt(r)}</td></tr>`).join("")}</tbody>`
-      : `<thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${rows.some(r => r.draws) ? "<th>Drawn</th>" : ""}<th>Lost</th><th>Pts won</th><th>Pts lost</th><th>+/−</th><th title="Average points scored per game">Avg pts</th><th>Win %</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${rows.some(x => x.draws) ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td><td>${r.pf}</td><td>${r.pa}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td><td>${pct(r)}</td></tr>`).join("")}</tbody>`;
+      : `<thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${rows.some(r => r.draws) ? "<th>Drawn</th>" : ""}<th>Lost</th>${scoredUD ? "<th>Pts won</th><th>Pts lost</th><th>+/−</th><th title=\"Average points scored per game\">Avg pts</th>" : ""}<th>Win %</th></tr></thead>
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${rows.some(x => x.draws) ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scoredUD ? `<td>${r.pf}</td><td>${r.pa}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>`;
     html += `<div class="rr-block"><div class="sp-head"><div class="rr-h">Standings</div>${tabs}</div><div class="tbl-wrap"><table class="res small">
       ${body}
     </table></div></div>`;
     return html;
   }
 
-  // Full screen courts: every court in the Arrange courts layout, with team names large enough to read across the hall.
+  // Courts view: every court in the Arrange courts layout, with team names large enough to read across the hall.
   function bigCourtsHtml(s) {
     const ud = s.session.ud, lv = udLevel(s), L = currentLayout(), nm = (ids) => ids.map(id => esc(s.players[id]?.name || "?")).join(" & ");
     const t = udParts(ud, Date.now());
@@ -1977,20 +2335,33 @@ table.res.small td{padding:6px}
       const tA = d ? (d.winner === "A" ? " won" : " lost") : "", tB = d ? (d.winner === "B" ? " won" : " lost") : "";
       return `<div class="bv-court${d ? " done" : ""}"${at}><div class="bv-num">Court ${c.num}</div><div class="bv-team${tA}">${nm(c.teamA)}</div><div class="bv-vs">vs</div><div class="bv-team${tB}">${nm(c.teamB)}</div>${res}</div>`;
     }).join("");
-    return `<div class="bv-head"><div class="bv-hl"><div class="bv-title">${udRoundOf(s)}</div>${lv.sit ? `<span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : ""}</div>${clock}</div>
+    const tag = lv.sit ? `<span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : "";
+    return `<div class="hist-head"><div><h2>Courts</h2><p class="note"><b>${udRoundOf(s)}</b>${ud.state === "ready" ? ", set and ready to start" : ""}. Laid out as set in Arrange courts. ${tag}</p></div>${clock}</div>
       <div class="bv-grid" style="grid-template-columns:repeat(${L.cols},minmax(0,1fr))">${cards}</div>
       ${ud.sitting.length ? `<div class="bv-sit">Sitting out this round: <strong>${ud.sitting.map(id => esc(s.players[id]?.name || "?")).join(", ")}</strong></div>` : ""}`;
   }
-  // Full screen stats: the tournament leaderboard so far.
+  // Standings view: the tournament standings so far, or the last tournament's final leaderboard.
   function bigStatsHtml(s) {
+    const head = (sub) => `<div class="hist-head"><div><h2>Standings</h2><p class="note">${sub}</p></div></div>`;
+    if (!isUD(s)) return s.lastSummary && s.lastSummary.rows
+      ? head("No tournament is running. This is the final leaderboard from the last one.") + `<div class="courts">${resultsHtml(s.lastSummary)}</div>`
+      : head("No tournament is running. Standings fill in as results go in once a tournament starts.");
     const ud = s.session.ud, scored = typeof udScored === "function" ? udScored(s) : true;
-    const rows = rankRows({ mode: "ud", rows: Object.values(s.players).map(p => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, hist: p.hist || [] })) });
-    const dr = rows.some(r => r.draws);
-    const streak = (h) => { const st = streakOf(h); return st.n >= 2 ? `${st.n} ${st.kind === "W" ? "wins" : st.kind === "L" ? "losses" : "draws"}` : "–"; };
-    return `<div class="bv-head"><div class="bv-hl"><div class="bv-title">Leaderboard</div><span class="bv-subt">${udRoundOf(s)} · ${ud.completed} ${ud.completed === 1 ? "round" : "rounds"} played</span></div></div>
-      <div class="tbl-wrap"><table class="res bv-table"><thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${scored ? "<th>+/−</th><th>Avg pts</th>" : ""}<th>Win %</th><th>Streak</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scored ? `<td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td><td>${streak(r.hist)}</td></tr>`).join("")}</tbody></table></div>
-      <p class="note bv-note">Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${scored ? ", then points difference, then points scored" : ""}. Avg pts is points scored per game.</p>`;
+    const where = {}; s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
+    const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ id, name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, hist: p.hist || [] })) });
+    const dr = rows.some(r => r.draws), played = rows.filter(r => r.games).length;
+    const now = (r) => where[r.id] ? `<span class="status s-new">Court ${where[r.id]}</span>` : `<span class="status s-sit">Sitting out</span>`;
+    const form = (r) => r.hist.slice(-5).map(x => `<span class="fm fm-${x}" title="${x === "W" ? "Won" : x === "L" ? "Lost" : "Drew"}">${x}</span>`).join("") || "–";
+    return head(`${udRoundOf(s)} · ${ud.completed} ${ud.completed === 1 ? "round" : "rounds"} played · ${played} of ${rows.length} players have finished a game. Updates as each result goes in. Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${scored ? ", then points difference, then points scored" : ""}.`)
+      + `<div class="panel"><div class="tbl-wrap"><table class="res stand-tbl"><thead><tr><th>#</th><th>Player</th><th style="text-align:left">${ud.state === "ready" ? "Next round" : "This round"}</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${scored ? '<th>+/−</th><th title="Average points scored per game">Avg pts</th>' : ""}<th>Win %</th><th style="text-align:left">Last 5</th></tr></thead>
+      <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td style="text-align:left">${now(r)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scored ? `<td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td><td class="fm-cell">${form(r)}</td></tr>`).join("")}</tbody></table></div></div>`;
+  }
+  // Match history view: every recorded match this session, or from the last session.
+  function bigHistHtml(s) {
+    const live = isUD(s), list = live ? (s.session.history || []) : ((s.lastSummary && s.lastSummary.history) || []);
+    const when = live ? "this session" : "the last session";
+    const head = `<div class="hist-head"><div><h2>Match history</h2><p class="note">${list.length ? `${list.length} ${list.length === 1 ? "match" : "matches"} in ${when}, newest first.` : `No matches recorded in ${when} yet. Results appear here as soon as they're entered.`}</p></div></div>`;
+    return list.length ? head + `<div class="panel"><div class="tbl-wrap"><table class="res small">${histTableHtml(list).replace(/<caption[\s\S]*?<\/caption>/, "")}</table></div></div>` : head;
   }
 
   function render() {
@@ -2049,6 +2420,8 @@ table.res.small td{padding:6px}
           rbar.innerHTML = `<span><b>${udRoundOf(s)}</b>${ud.timed ? "" : ` \u00b7 ${done} of ${courtsIn.length} ${courtsIn.length === 1 ? "court" : "courts"} finished`}${lv.sit ? ` <span class="lvl-tag${lv.next === ud.round ? " now" : ""}">${lv.next === ud.round ? "Games level after this round" : `Games level after round ${lv.next}`}</span>` : ""}</span>${(() => { const t = udParts(ud, Date.now()); return `<div class="udbig${t.up ? " up" : ""}${t.paused ? " paused" : ""}" role="timer"><span class="udlbl">${t.label}</span><span class="udnum">${t.value}</span></div>`; })()}${canWrite ? `<div class="ud-actions"><button type="button" id="udPause" class="${ud.pausedAt ? "btn-sun" : ""}"${pauseShown(udParts(ud, Date.now())) ? "" : " hidden"}>${ud.pausedAt ? "Resume" : "Pause"}</button>${ud.timed ? `<button class="btn-end ud-endround" id="udEndRound">End round</button>` : ""}</div>` : ""}`;
         }
         $("udStart") && $("udStart").addEventListener("click", (e) => confirmStartUD(e.currentTarget));
+      if (!rbar.querySelector("#udFocus")) rbar.insertAdjacentHTML("beforeend", `<button type="button" id="udFocus" class="btn-ghost ud-focus">${timerOnly ? "Show full board" : "Full screen timer"}</button>`);
+      $("udFocus").addEventListener("click", () => setTimerOnly(!timerOnly));
         $("udEndRound") && $("udEndRound").addEventListener("click", endRoundUD);
       $("udShuffle") && $("udShuffle").addEventListener("click", (e) => { e.currentTarget.disabled = true; shuffleUD(); });
       $("udPause") && $("udPause").addEventListener("click", (e) => { e.currentTarget.disabled = true; togglePause(); });
@@ -2057,7 +2430,9 @@ table.res.small td{padding:6px}
             const m = Math.max(0, Math.min(90, parseInt($("udTmMin").value, 10) || 0)), sec = Math.max(0, Math.min(59, parseInt($("udTmSec").value, 10) || 0));
             setUDTime(m * 60 + sec);
           };
-          $("udTmMin").addEventListener("change", apply); $("udTmSec").addEventListener("change", apply);
+          let tmTimer = null;
+          const soon = () => { clearTimeout(tmTimer); tmTimer = setTimeout(apply, 800); };
+          ["udTmMin", "udTmSec"].forEach(id => { $(id).addEventListener("change", () => { clearTimeout(tmTimer); apply(); }); $(id).addEventListener("input", soon); });
         }
       }
     } else rbar.hidden = true;
@@ -2068,23 +2443,26 @@ table.res.small td{padding:6px}
     // with no session running, the queue sits directly under the courts column
     document.querySelector(".layout").classList.toggle("stacked", !live && !arranging);
 
-    // courts
+    // courts (labelled Setup tournament while no session is running)
     const box = $("courts");
+    $("courtsH").textContent = !live && !arranging ? "Setup tournament" : "Courts";
     box.style.gridTemplateColumns = ""; box.classList.remove("laid");
     $("arrangeBar").hidden = !arranging;
     if (arranging) {
       renderArrange(box);
       $("courtSummary").textContent = "Arranging courts";
     } else if (!live) {
-      box.innerHTML = `<div class="court-card" style="grid-column:1/-1">
-        <p style="margin:0;font-weight:600">No session running.</p>
-        <p style="margin:0;color:var(--muted)">${ONLY_UD ? "Players add their names to the player list below. When everyone is in, the admin starts the up and down tournament. Players go onto courts in list order from court 1." : "Players can join the player list now. When all courts are free, the admin starts the session and the first players go straight on."}</p>
-        ${canWrite ? `<div class="row" style="flex:none;justify-content:flex-start"><button class="btn-sun" id="startBtn" style="flex:none">Start session</button>${s.lastSummary && s.lastSummary.rows ? (s.lastSummary.hidden ? `<button id="showRes" class="btn-ghost" style="flex:none">Show last results</button>` : `<button id="hideRes" class="btn-ghost" style="flex:none">Hide results</button>`) : ""}</div>` : ""}
-      </div>${s.lastSummary && !s.lastSummary.hidden ? resultsHtml(s.lastSummary) : ""}`;
-      $("hideRes") && $("hideRes").addEventListener("click", () => setResultsHidden(true));
-      $("showRes") && $("showRes").addEventListener("click", () => setResultsHidden(false));
-      $("startBtn") && $("startBtn").addEventListener("click", startSession);
-      $("copyRes") && $("copyRes").addEventListener("click", () => copyResults(s.lastSummary));
+      // Setup tournament: the form shows once admin is unlocked on this device.
+      const card = setupCardEl();
+      if (box.firstElementChild !== card || box.children.length !== 1) { box.innerHTML = ""; box.appendChild(card); }
+      const setupAdmin = canWrite && isAdmin();
+      card.querySelector("#startForm").hidden = !setupAdmin;
+      card.querySelector(".setup-unlock").hidden = !canWrite || setupAdmin;
+      card.querySelector(".setup-intro").textContent = setupAdmin
+        ? "Add every player to the player list, choose the options below, then press Start tournament. Players go onto courts in list order from court 1."
+        : canWrite ? "Admin must be unlocked to set up a new tournament. Players can still add their names to the player list."
+        : "The tournament hasn't started yet. Once the admin starts it, the courts show here.";
+      if (setupAdmin) updateSetup();
       $("courtSummary").textContent = "";
     } else {
       const courts = s.session.courts;
@@ -2108,7 +2486,7 @@ table.res.small td{padding:6px}
           ${canWrite && !tour ? `<div class="row"><button class="btn-sun" data-alloc="${c.num}" ${enough ? "" : "disabled"}>Allocate now</button><button data-manual="${c.num}" ${enough ? "" : "disabled"}>Manual allocation</button></div>` : ""}</div>`;
         }
         const ud = udLive ? s.session.ud : null, d = udLive ? c.done : null;
-        const panel = freeingCourt === c.num ? (tour ? `<div class="free-panel">
+        const panel = freeingCourt === c.num ? (tour && udScored(s) ? `<div class="free-panel">
             <p>Score on court ${c.num}</p>
             <div class="score-row">
               <label>${names(c.teamA)}<input type="number" id="scA" min="0" max="99" inputmode="numeric"></label>
@@ -2175,14 +2553,15 @@ table.res.small td{padding:6px}
       box.querySelectorAll("[data-cancel]").forEach(b => b.addEventListener("click", () => { freeingCourt = null; frozenAt = null; render(); }));
     }
 
+    // page views: Standings, Courts, Match history (this device only)
+    if (bigView === "courts" && !udLive) bigView = null;
     renderTabs();
-    // full screen courts or stats (this device only)
-    const bigOn = !!bigView && udLive && !arranging;
+    const bigOn = !!bigView && !arranging && !(timerOnly && udLive);
     document.body.classList.toggle("big-view", bigOn);
     $("bigView").hidden = !bigOn;
     if (bigOn) {
-      $("bigView").innerHTML = bigView === "stats" ? bigStatsHtml(s) : bigCourtsHtml(s);
-      $("bigView").querySelectorAll("[data-bv]").forEach(b => b.addEventListener("click", () => setBigView(b.dataset.bv || null)));
+      $("bigView").innerHTML = bigView === "stats" ? bigStatsHtml(s) : bigView === "history" ? bigHistHtml(s) : bigCourtsHtml(s);
+      $("copyRes") && $("copyRes").addEventListener("click", () => copyResults(s.lastSummary));
     }
 
     // tournament panel replaces the queue during a round robin
@@ -2256,6 +2635,21 @@ table.res.small td{padding:6px}
   $("adminBtn").addEventListener("click", adminMenu);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !document.fullscreenElement && currentView() !== "board") goView("board"); });
   document.addEventListener("fullscreenchange", renderTabs);
+  // Help opens as its own screen in this page, so it works wherever the board is hosted.
+  let helpReturn = 0;
+  function showHelp(on) {
+    if (on) helpReturn = window.scrollY;
+    document.body.classList.toggle("show-help", on);
+    renderTabs();
+    $("helpView").hidden = !on;
+    window.scrollTo(0, on ? 0 : helpReturn);
+    if (on) $("helpView").querySelector("h1, h2").focus({ preventScroll: true });
+  }
+  $("helpBtn").addEventListener("click", () => showHelp(true));
+  $("helpFoot").addEventListener("click", () => showHelp(true));
+  $("helpView").querySelectorAll("[data-help-back]").forEach(b => b.addEventListener("click", () => goView("board")));
+  $("helpView").querySelectorAll("[data-help-go]").forEach(b => b.addEventListener("click", () => { const t = $(b.dataset.helpGo); t && t.scrollIntoView({ behavior: "smooth", block: "start" }); }));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("helpView").hidden) showHelp(false); });
   $("endBtn").addEventListener("click", endSession);
   $("cMinus").addEventListener("click", () => resizeLayout(-1, 0));
   $("cPlus").addEventListener("click", () => resizeLayout(1, 0));
@@ -2362,58 +2756,4 @@ table.res.small td{padding:6px}
   })();
 })();
 </script>
-<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style><style>.view-tabs{position:sticky;top:0;z-index:12;display:flex;align-items:center;gap:8px;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));background:var(--surface);border-bottom:1px solid var(--line)}
-.vt-list{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}
-.vt-list::-webkit-scrollbar{display:none}
-.vt{flex:none;display:inline-flex;align-items:center;min-height:40px;padding:6px 14px;border-radius:999px;border:1px solid transparent;background:transparent;color:var(--muted);font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap;cursor:pointer}
-.vt:hover{color:var(--ink);border-color:var(--line)}
-.vt.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
-.vt:focus-visible,.vt-fs:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-.vt-fs{flex:none;min-height:40px;padding:6px 12px;font-size:13px}
-@media (max-width:480px){.view-tabs{padding-left:8px;padding-right:8px}.vt-list{gap:0}.vt{padding:6px 8px;font-size:13px}.vt-fs{display:none}}
-body.show-help #bigView{display:none!important}
-body.big-view>.wrap,body.big-view #helpView{display:none!important}
-#bigView{min-height:calc(100vh - 58px);box-sizing:border-box;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px;background:var(--bg)}
-.bv-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
-.bv-hl{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
-.bv-title{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(28px,4vw,56px);line-height:1}
-.bv-subt{color:var(--muted);font-weight:600;font-size:clamp(14px,1.6vw,20px)}
-.bv-head .udbig{flex:none;padding:0}
-.bv-head .udbig .udnum{font-size:clamp(48px,7vw,110px)}
-.bv-ready{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(28px,4vw,56px);color:var(--new)}
-.bv-btns{display:flex;flex-wrap:wrap;gap:8px}
-.bv-grid{display:grid;gap:14px;align-content:start}
-.bv-court{background:var(--court);color:var(--court-line);border:3px solid var(--court-line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;min-height:clamp(140px,22vh,320px);min-width:0}
-.bv-court.off{background:transparent;color:var(--muted);border:2px dashed var(--line)}
-.bv-num{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(22px,2.6vw,40px);letter-spacing:.02em}
-.bv-team{font-weight:700;font-size:clamp(18px,2.4vw,38px);line-height:1.15;overflow-wrap:anywhere}
-.bv-team.won{color:var(--sun)}
-.bv-team.lost{opacity:.7}
-.bv-vs{font-size:clamp(12px,1.2vw,18px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
-.bv-res{margin-top:4px;background:var(--surface);color:var(--ink);border-radius:8px;padding:2px 10px;font-weight:700;font-size:clamp(13px,1.4vw,20px)}
-.bv-off{font-weight:600}
-.bv-sit{font-size:clamp(15px,1.8vw,26px);color:var(--muted)}
-.bv-sit strong{color:var(--ink)}
-.bv-table{font-size:clamp(15px,1.8vw,28px)}
-.bv-table td,.bv-table th{padding:clamp(6px,1vh,14px) 10px}
-.bv-table th{font-size:clamp(11px,1.1vw,16px)}
-.bv-note{font-size:clamp(12px,1.2vw,16px)}
-.bv-table td:last-child{white-space:nowrap}
-@media (max-width:600px){.bv-grid{grid-template-columns:1fr!important}.bv-court{grid-row:auto!important;grid-column:auto!important}}
-.hist-wrap summary{cursor:pointer;font-weight:700;padding:6px 0}
-table.res th.hist-h{text-align:left;width:auto}
-table.res td.hist-t{text-align:left;white-space:normal;min-width:110px}
-table.res td.hist-t.hist-w{font-weight:700;color:var(--new)}
-table.res td.hist-s{text-align:center;white-space:nowrap;font-weight:700}
-.lvl-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;letter-spacing:.02em;padding:2px 9px;border-radius:999px;background:var(--new-bg);color:var(--new);border:1px solid var(--new);white-space:nowrap;vertical-align:1px}
-.lvl-tag.now{background:var(--new);color:var(--surface)}
-.te-block{display:flex;flex-direction:column;gap:10px;border-top:1px solid color-mix(in srgb,var(--new) 35%,transparent);padding-top:12px}
-.te-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
-.te-lbl{font-size:13px;font-weight:600;color:var(--muted);min-width:96px}
-.te-chips{display:flex;flex-wrap:wrap;gap:6px}
-.te-chips button{min-height:34px;min-width:40px;padding:4px 10px;border-radius:999px;font-size:13px}
-.te-chips button.on{background:var(--sun);border-color:var(--sun);color:var(--sun-ink)}
-.te-out{margin:0;font-size:14px;color:var(--ink)}
-.te-out .te-big{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;display:block}
-.te-warn{color:var(--win);font-weight:600}
-.hdr-help{display:inline-flex;align-items:center;align-self:center;box-sizing:border-box;min-height:44px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);color:var(--ink);font-weight:600;text-decoration:none}.hdr-help:hover{border-color:var(--muted)}.hdr-help:focus-visible,.app-foot a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.pin-forgot{align-self:center;background:none;border:0;min-height:36px;padding:4px 8px;color:var(--muted);font-weight:600;font-size:13px;text-decoration:underline}.pin-forgot:hover{color:var(--ink)}.app-foot{text-align:center;color:var(--muted);font-size:13px;padding-top:12px;border-top:1px solid var(--line)}.app-foot a{color:var(--muted);font-weight:600}.app-foot a:hover{color:var(--ink)}</style></body></html>
+<style>:root{--display:"SWS Display","Arial Narrow",system-ui,sans-serif;--body:"SWS Text",system-ui,-apple-system,"Segoe UI",sans-serif}</style></body></html>
