@@ -8,20 +8,22 @@ A single-page app for running a **court up-and-down doubles tournament** for pic
 - Players go onto courts in queue order, starting from court 1. Each court needs 4 players. If the numbers don't divide evenly, the leftover players sit out that round.
 - Every round starts and ends together.
 - **Winners move one court toward court 1. Losers move one court away.**
-- Partners change every round. Where a court has a winner and a loser coming in, they are paired together; otherwise last round's partners are split up.
+- Partners change every round. Nobody partners the same person they played with in their previous game.
 - If a game finishes level, the admin chooses which team moves up, and both teams record a draw.
 - The board calls out players who have stayed on court 1 for several rounds in a row.
 
 ## Features
 
+- **Set up the tournament from the board**: once admin is unlocked, the Setup tournament card on the Board shows the options and a Start tournament button.
 - **Player List**: players join by typing their name. The admin can reorder by dragging, mark someone as sitting out (they keep their place) or remove them before the tournament starts, and re-add everyone from the last session in one tap.
 - **Planned rounds**: choose how many rounds to play when starting (suggested numbers keep games level). The board shows "Round 3 of 8" and asks before going past the plan.
 - **Untimed or timed rounds**: untimed rounds end when every court has a result. Timed rounds run for a set time (minutes and seconds) after a 10 second setup, with beeps and a spoken countdown. The round time can be changed between rounds.
-- **Pause, resume and end round** controls for the admin.
+- **Pause, resume and end round** controls for the admin. Ending a round early asks for the winning team on each court.
+- **Full screen timer**: switch the board to just the round timer, for a TV or big screen.
 - **Shuffle courts**: randomise courts and partners for the coming round.
 - **Score entry**: enter both scores per court; the higher score wins.
-- **Results and standings**: Allocations, Stats (including average points per game), Streaks and match History views, plus last results with the match history and a copyable results summary.
-- **Page tabs**: Board, Courts (every court in your court layout, with team names), Leaderboard, Timer and Help, plus a Full screen button for a TV or big screen.
+- **Page tabs**, styled like the Round Robin Tournament Manager: Board, Standings (including average points per game and streaks), Courts (every court in your court layout, with team names) and Match history, plus a copyable results summary.
+- **Help** built into the app, opened from the header or footer.
 - **Court layout**: arrange the court tiles to match the venue.
 - **Undo** for the last action.
 
@@ -56,7 +58,7 @@ All data is kept in the browser's own storage (`localStorage`) on the device run
 
 ```
 index.html   The whole app: markup, styles, scripts and embedded fonts
-help.html    Help and how-to guide, linked from the app header
+help.html    Standalone copy of the help guide
 README.md    This file
 ```
 
