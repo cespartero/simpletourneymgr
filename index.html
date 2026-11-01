@@ -617,7 +617,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     <h2>Standings and results</h2>
     <dl>
       <dt>Allocations</dt>
-      <dd>Who is on which court this round, who is sitting out, and what happened to each player last round.</dd>
+      <dd>Who is on which court this round, who is sitting out, what happened to each player last round, and how many rounds each player has sat out so far this session (<b>Sit outs</b>).</dd>
       <dt>Stats</dt>
       <dd>Games played, won, drawn and lost, and win percentage. With scores captured, points won and lost, points difference and average points per game (<b>Avg pts</b>) too.</dd>
       <dt>Streaks</dt>
@@ -2314,7 +2314,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       ${(() => { const cy = udCycle(Object.keys(s.players).length, ud.per * 4); return cy.sit ? `<div class="note">With ${cy.sit} sitting out each round, everyone has played the same number of games every <strong>${cy.rounds} rounds</strong> (rounds ${cy.rounds}, ${cy.rounds * 2}, ${cy.rounds * 3} and so on). Next: <strong>after round ${udLevel(s).next}</strong>.</div>` : `<div class="note">Everyone plays every round.</div>`; })()}</div>`;
     const where = {};
     s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
-    const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, pf: p.pf || 0, pa: p.pa || 0, top: p.top || 0, draws: p.draws || 0, court: where[id] || null, last: p.last || null, hist: p.hist || [], c1: p.c1 || 0 })) });
+    const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, pf: p.pf || 0, pa: p.pa || 0, top: p.top || 0, draws: p.draws || 0, court: where[id] || null, last: p.last || null, hist: p.hist || [], c1: p.c1 || 0, so: Math.max(0, ((ud.sits && ud.sits[id]) || 0) - ((ud.sitting || []).includes(id) ? 1 : 0)) })) });
     const page = ["stats", "streaks", "history"].includes(standingsPage) ? standingsPage : "alloc";
     const scoredUD = udScored(s);
     const tabs = `<div class="sp-tabs" role="tablist" aria-label="Standings pages">
@@ -2324,8 +2324,8 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
         <button type="button" role="tab" data-sp="history" aria-selected="${page === "history"}" class="${page === "history" ? "on" : ""}">History</button>
       </div>`;
     const body = page === "history" ? histTableHtml(s.session.history) : page === "streaks" ? streaksHtml(rows) : page === "alloc"
-      ? `<thead><tr><th>#</th><th>Player</th><th>Round ${ud.round}</th><th>Last round</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td class="rd">${r.court ? `<span class="status s-new">Allocated · Ct ${r.court}</span>` : `<span class="status s-sit">Sit out</span>`}</td><td class="lr">${lastTxt(r)}</td></tr>`).join("")}</tbody>`
+      ? `<thead><tr><th>#</th><th>Player</th><th>Round ${ud.round}</th><th>Last round</th><th>Sit outs</th></tr></thead>
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td class="rd">${r.court ? `<span class="status s-new">Allocated · Ct ${r.court}</span>` : `<span class="status s-sit">Sit out</span>`}</td><td class="lr">${lastTxt(r)}</td><td>${r.so}</td></tr>`).join("")}</tbody>`
       : `<thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${rows.some(r => r.draws) ? "<th>Drawn</th>" : ""}<th>Lost</th>${scoredUD ? "<th>Pts won</th><th>Pts lost</th><th>+/−</th><th title=\"Average points scored per game\">Avg pts</th>" : ""}<th>Win %</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${rows.some(x => x.draws) ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scoredUD ? `<td>${r.pf}</td><td>${r.pa}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>`;
     html += `<div class="rr-block"><div class="sp-head"><div class="rr-h">Standings</div>${tabs}</div><div class="tbl-wrap"><table class="res small">
