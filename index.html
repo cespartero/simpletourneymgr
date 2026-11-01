@@ -300,6 +300,14 @@ body.big-view .layout{display:none!important}
 .hist-head .udbig .udnum{font-size:clamp(40px,6vw,80px)}
 .stand-tbl td:last-child{white-space:nowrap}
 table.stand-tbl td .status{white-space:nowrap;font-size:11px}
+.wake-tgl{flex-direction:row;align-items:center;gap:8px;min-height:44px;box-sizing:border-box;padding:6px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;color:var(--ink);font-size:14px;font-weight:600;white-space:nowrap}
+.wake-tgl:hover{border-color:var(--muted)}
+.wake-tgl input{position:absolute;opacity:0;width:1px;height:1px}
+.wake-track{position:relative;flex:none;width:40px;height:24px;border-radius:999px;background:var(--line);transition:background .15s}
+.wake-track::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.wake-tgl input:checked+.wake-track{background:var(--sun)}
+.wake-tgl input:checked+.wake-track::after{transform:translateX(16px)}
+.wake-tgl input:focus-visible+.wake-track{outline:3px solid var(--focus);outline-offset:2px}
 .setup-card{gap:14px}
 .setup-intro{margin:0;color:var(--muted)}
 .setup-form{display:flex;flex-direction:column;gap:14px}
@@ -435,6 +443,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     <div class="hdr-actions">
       <span class="pill" id="sessPill">No session</span>
       <button id="endBtn" class="btn-danger" hidden>End session</button>
+      <label class="wake-tgl" title="Stops this device's screen going to sleep while the board is open"><input type="checkbox" id="wakeSw" role="switch"><span class="wake-track" aria-hidden="true"></span>Keep screen on</label>
       <button id="adminBtn" class="btn-ghost">Admin</button>
       <button type="button" id="helpBtn" class="hdr-help">Help</button>
     </div>
@@ -587,6 +596,8 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       <dd>The tournament standings so far: where each player is this round, wins, losses, points difference, average points per game, win percentage and last 5 results. Between sessions it shows the last tournament's final leaderboard.</dd>
       <dt>Match history tab</dt>
       <dd>Every match recorded this session, newest first, or the last session's matches between sessions.</dd>
+      <dt>Keep screen on</dt>
+      <dd>The switch beside <span class="k">Admin</span> stops this device's screen going to sleep while the board is open, on every tab. Anyone can use it, no PIN needed, and each device remembers its own setting. Turn it on for a phone or TV showing the timer or the courts.</dd>
       <dt>Full screen timer</dt>
       <dd>A button in the round bar. Shows a large timer on its own, handy for a screen beside the courts. Tap <span class="k">Show full board</span> to go back.</dd>
     </dl>
@@ -660,7 +671,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       <dt>I forgot the admin PIN.</dt>
       <dd>Tap <span class="k">Admin</span>, then <b>Forgot the PIN?</b> under the PIN box. The app owner can enter their override PIN there to reset the board, which also clears the admin PIN so a new one can be set. This wipes the session, player list and saved results too.</dd>
       <dt>The beeps or voice don't play.</dt>
-      <dd>Turn the device volume up, tap the screen before starting the round, and keep the screen on. Some phones pause sound when the screen locks.</dd>
+      <dd>Turn the device volume up, tap the screen before starting the round, and turn on <b>Keep screen on</b>. Some phones pause sound when the screen locks.</dd>
     </dl>
   </section>
 
@@ -2633,6 +2644,29 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
   // ---------- wiring ----------
   $("addForm").addEventListener("submit", (e) => { e.preventDefault(); addPlayer($("nameInput").value); });
   $("adminBtn").addEventListener("click", adminMenu);
+  // ---------- keep screen on (this device, every tab) ----------
+  // Browsers drop the lock when the page is hidden, so it's taken again whenever the board comes back into view.
+  let wakeWanted = false, wakeLock = null, wakeWarned = false;
+  try { wakeWanted = localStorage.getItem("ud-keep-awake") === "1"; } catch {}
+  async function syncWake() {
+    $("wakeSw").checked = wakeWanted;
+    try {
+      if (wakeWanted && !wakeLock && document.visibilityState === "visible") {
+        if (!navigator.wakeLock) throw new Error("unsupported");
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => { wakeLock = null; });
+      } else if (!wakeWanted && wakeLock) { const l = wakeLock; wakeLock = null; await l.release(); }
+    } catch {
+      if (wakeWanted && !wakeWarned) { wakeWarned = true; toast("This browser won't let the board keep the screen on. Change the device's sleep settings instead."); }
+    }
+  }
+  $("wakeSw").addEventListener("change", () => {
+    wakeWanted = $("wakeSw").checked; wakeWarned = false;
+    try { localStorage.setItem("ud-keep-awake", wakeWanted ? "1" : "0"); } catch {}
+    syncWake().then(() => { if (!wakeWanted || wakeLock) toast(wakeWanted ? "Screen will stay on while the board is open" : "Screen can sleep again"); });
+  });
+  document.addEventListener("visibilitychange", syncWake);
+  syncWake();
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !document.fullscreenElement && currentView() !== "board") goView("board"); });
   document.addEventListener("fullscreenchange", renderTabs);
   // Help opens as its own screen in this page, so it works wherever the board is hosted.

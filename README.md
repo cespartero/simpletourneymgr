@@ -20,6 +20,7 @@ A single-page app for running a **court up-and-down doubles tournament** for pic
 - **Untimed or timed rounds**: untimed rounds end when every court has a result. Timed rounds run for a set time (minutes and seconds) after a 10 second setup, with beeps and a spoken countdown. The round time can be changed between rounds.
 - **Pause, resume and end round** controls for the admin. Ending a round early asks for the winning team on each court.
 - **Full screen timer**: switch the board to just the round timer, for a TV or big screen.
+- **Keep screen on**: a switch beside Admin stops the device's screen sleeping while the board is open, on every tab.
 - **Shuffle courts**: randomise courts and partners for the coming round.
 - **Score entry**: enter both scores per court; the higher score wins.
 - **Page tabs**, styled like the Round Robin Tournament Manager: Board, Standings (including average points per game and streaks), Courts (every court in your court layout, with team names) and Match history, plus a copyable results summary.
