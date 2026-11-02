@@ -99,11 +99,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .time-ctl input{box-sizing:border-box;width:64px;min-height:36px;font:inherit;font-weight:700;font-size:16px;text-align:center;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:4px}
 .suggest{display:flex;flex-direction:column;gap:8px;border:1px solid var(--new);background:var(--new-bg);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--ink)}
 .suggest button{align-self:flex-start;min-height:38px}
-.estimator{display:flex;flex-direction:column;gap:10px;border:1px solid var(--new);background:var(--new-bg);border-radius:12px;padding:12px 14px}
-.est-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .est-msg{margin:0;font-size:14px;color:var(--ink)}
-.estimator .arr-ctl b{font-size:18px}
-.estimator button[data-usecourts]{align-self:flex-start;min-height:40px}
+.setup-courts .arr-ctl b{font-size:18px}
+.setup-plan button[data-usecourts]{align-self:flex-start;min-height:40px;margin-top:8px}
+.setup-est{margin:0}
 .time-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .time-pick .tp-lbl{grid-column:1/-1;font-size:13px;font-weight:600;color:var(--muted)}
 .time-pick input{box-sizing:border-box;width:100%}
@@ -333,9 +332,7 @@ table.res td.hist-t.hist-w{font-weight:700;color:var(--new)}
 table.res td.hist-s{text-align:center;white-space:nowrap;font-weight:700}
 .lvl-tag{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;letter-spacing:.02em;padding:2px 9px;border-radius:999px;background:var(--new-bg);color:var(--new);border:1px solid var(--new);white-space:nowrap;vertical-align:1px}
 .lvl-tag.now{background:var(--new);color:var(--surface)}
-.te-block{display:flex;flex-direction:column;gap:10px;border-top:1px solid color-mix(in srgb,var(--new) 35%,transparent);padding-top:12px}
 .te-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
-.te-lbl{font-size:13px;font-weight:600;color:var(--muted);min-width:96px}
 .te-chips{display:flex;flex-wrap:wrap;gap:6px}
 .te-chips button{min-height:34px;min-width:40px;padding:4px 10px;border-radius:999px;font-size:13px}
 .te-chips button.on{background:var(--sun);border-color:var(--sun);color:var(--sun-ink)}
@@ -475,7 +472,6 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
         <button type="submit" class="btn-sun">Join</button>
       </form>
       <p class="err" id="addErr" hidden></p>
-      <div class="estimator" id="estimator" hidden></div>
       <div class="next" id="nextUp" hidden></div>
       <ol class="queue" id="queue"></ol>
       <div id="rrPanel" class="rr" hidden></div>
@@ -549,6 +545,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     <ol>
       <li>Get everyone onto the player list. You need at least 4 players.</li>
       <li>Unlock admin: tap <span class="k">Admin</span> and enter the PIN (the first time, you'll choose one). The options appear in the <b>Setup tournament</b> box on the Board.</li>
+      <li>Set the number of <b>courts available</b> with the <span class="k">−</span> and <span class="k">+</span> buttons.</li>
       <li>Choose the <b>round timing</b>:
         <ul>
           <li><b>Untimed</b>: each round ends when every court has a result.</li>
@@ -561,12 +558,12 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
           <li><b>Winners only</b>: just tap the team that won. No scores are kept.</li>
         </ul>
       </li>
-      <li>Choose the <b>rounds to play</b>. The suggested numbers, where everyone ends on the same number of games, are one tap away, but you can pick any number from 1 to 30. The round bar then shows, for example, <b>Round 3 of 8</b>.</li>
+      <li>Choose the <b>rounds to play</b>. The suggested numbers, where everyone ends on the same number of games, are one tap away, but you can pick any number from 1 to 30. Just above, the app suggests how many rounds to plan so everyone finishes on the same number of games. The round bar then shows, for example, <b>Round 3 of 8</b>.</li>
       <li>Check the summary. It tells you how many courts will be used and, if the numbers don't divide by 4, how many sit out each round.</li>
       <li>Tap <span class="k">Start tournament</span>, then <span class="k">Start round 1</span> once everyone is on court.</li>
     </ol>
     <h3>Odd numbers and sit-outs</h3>
-    <p>Each court takes 4 players. Anyone left over sits out that round, and sit-outs take turns. Before you start, the <b>Round estimator</b> in the player list panel suggests how many rounds to plan so everyone finishes on the same number of games. Below it, the <b>Time estimator</b> works out roughly how long timed rounds will take: pick the number of rounds (the suggested ones are one tap away) and the time per round.</p>
+    <p>Each court takes 4 players. Anyone left over sits out that round, and sit-outs take turns. If games would take too long to even out, the setup box suggests having a few more people sit out on fewer courts, with a button to do it. With <b>Timed</b> rounds, the setup box also shows roughly how long the tournament will take and about when you'd finish if you started now.</p>
   </section>
 
   <section class="hv-card" id="hv-rounds">
@@ -1462,7 +1459,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
   }
 
   const emptyCourts = (n) => Array.from({ length: n }, (_, i) => ({ num: i + 1, teamA: null, teamB: null, startedAt: null }));
-  // ---------- round estimator (player list panel, before a session) ----------
+  // ---------- round plan (Setup tournament box, before a session) ----------
   // Aims for a session of 5 to 12 rounds that ends with everyone on the same number of games.
   const MIN_R = 5, MAX_R = 12;
   function roundPlanHtml(qn, courts) {
@@ -1482,7 +1479,6 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     const tips = [fits(alt(qn + 1)).length ? `one more player (${planTxt(alt(qn + 1))})` : "", fits(alt(qn - 1)).length ? `one fewer player (${planTxt(alt(qn - 1))})` : ""].filter(Boolean);
     return `<p class="est-msg"><strong>${setup}</strong> Games even out every ${rs(cy)}, and no court setting gives ${MIN_R} to ${MAX_R} rounds for ${qn} players.${tips.length ? ` It would work with ${tips.join(" or ")}.` : ""}</p>`;
   }
-  // ---------- time estimator (timed rounds, before a session) ----------
   // The rounds the plan above suggests, and how often games even out. Kept in step with roundPlanHtml.
   function suggestedRounds(qn, courts) {
     if (qn < 4) return { list: [], cycle: 1 };
@@ -1492,52 +1488,15 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     for (let c = used - 1; c >= 1; c--) { const r = udCycle(qn, c * 4).rounds; if (fits(r).length) return { list: fits(r), cycle: cy }; }
     return { list: [], cycle: cy };
   }
-  // Chosen on this device only; null means "follow the suggestion" or "use the saved round time".
-  let estRounds = null, estSecs = null;
-  // Rounds picked in the Start screen; pendingTarget carries the choice into the new session.
+  // Rounds picked in the Setup tournament box; pendingTarget carries the choice into the new session.
   let startRounds = null, pendingTarget = null;
   const SETUP_SECS = 10;
   const fmtTotal = (sec) => { const m = Math.ceil(sec / 60); return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`; };
-  function timeEstimate(qn, courts) {
-    const sug = suggestedRounds(qn, courts);
-    const rounds = estRounds != null ? estRounds : (sug.list[0] || 8);
-    const secs = estSecs != null ? estSecs : (settings.udSeconds || (settings.udMinutes || 12) * 60);
-    return { sug, rounds, secs, total: rounds * (secs + SETUP_SECS) };
-  }
-  function timeEstOutHtml(e) {
-    const end = new Date(Date.now() + e.total * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    const uneven = qnNow() >= 4 && e.sug.cycle > 1 && e.rounds % e.sug.cycle !== 0;
-    return `<span class="te-big">About ${fmtTotal(e.total)}</span>
-      ${e.rounds} ${e.rounds === 1 ? "round" : "rounds"} of ${fmtMS(e.secs)}, plus the ${SETUP_SECS} second setup before each round. Starting now, you'd finish around ${esc(end)}. Allow extra time between rounds for entering results and changing courts.
-      ${uneven ? `<span class="te-warn">With ${e.rounds} rounds, some players will have played one game fewer. Games are level every ${e.sug.cycle} rounds.</span>` : ""}`;
-  }
-  const qnNow = () => waiting(state).length;
-  function timeEstHtml(qn, courts) {
-    const e = timeEstimate(qn, courts);
-    return `<div class="te-block" id="timeEst">
-      <div class="rr-h">Time estimator (timed rounds)</div>
-      <div class="te-row"><span class="te-lbl">Rounds</span>
-        <div class="arr-ctl"><button type="button" data-te-step="-1" aria-label="One round fewer">−</button><b>${e.rounds}</b><button type="button" data-te-step="1" aria-label="One round more">+</button></div>
-        ${e.sug.list.length ? `<div class="te-chips" role="group" aria-label="Suggested rounds">${e.sug.list.map(r => `<button type="button" data-te-pick="${r}" class="${r === e.rounds ? "on" : ""}" aria-pressed="${r === e.rounds}">${r}</button>`).join("")}</div>` : ""}
-      </div>
-      <div class="te-row"><span class="te-lbl">Time per round</span>
-        <div class="arr-ctl time-ctl"><input type="number" id="estMin" min="0" max="90" inputmode="numeric" aria-label="Minutes per round" value="${Math.floor(e.secs / 60)}"><span>min</span><input type="number" id="estSec" min="0" max="59" step="5" inputmode="numeric" aria-label="Seconds per round" value="${e.secs % 60}"><span>sec</span></div>
-      </div>
-      <p class="te-out" id="estOut" aria-live="polite">${timeEstOutHtml(e)}</p>
-    </div>`;
-  }
-  function bindTimeEst(qn, courts) {
-    const box = $("timeEst"); if (!box) return;
-    box.querySelectorAll("[data-te-step]").forEach(b => b.addEventListener("click", () => {
-      estRounds = Math.max(1, Math.min(30, timeEstimate(qn, courts).rounds + +b.dataset.teStep)); render();
-    }));
-    box.querySelectorAll("[data-te-pick]").forEach(b => b.addEventListener("click", () => { estRounds = +b.dataset.tePick; render(); }));
-    const readTime = () => {
-      const m = Math.max(0, Math.min(90, parseInt($("estMin").value, 10) || 0)), sc = Math.max(0, Math.min(59, parseInt($("estSec").value, 10) || 0));
-      estSecs = Math.max(10, m * 60 + sc);
-      $("estOut").innerHTML = timeEstOutHtml(timeEstimate(qn, courts));
-    };
-    ["estMin", "estSec"].forEach(id => { $(id).addEventListener("input", readTime); $(id).addEventListener("change", readTime); });
+  function timeEstOutHtml(rounds, secs) {
+    const total = rounds * (secs + SETUP_SECS);
+    const end = new Date(Date.now() + total * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return `<span class="te-big">About ${fmtTotal(total)}</span>
+      ${rounds} ${rounds === 1 ? "round" : "rounds"} of ${fmtMS(secs)}, plus the ${SETUP_SECS} second setup before each round. Starting now, you'd finish around ${esc(end)}. Allow extra time between rounds for entering results and changing courts.`;
   }
 
   async function setCourtCount(n) {
@@ -1562,6 +1521,9 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
         <fieldset class="modes" id="modePick" hidden><legend>Session type</legend>
           <label class="mode"><input type="radio" name="mode" value="ud" checked><span><b>Court up down tournament</b></span></label>
         </fieldset>
+        <fieldset class="modes setup-courts" id="udCourtOpts"><legend>Courts available</legend>
+          <div class="arr-ctl"><button type="button" data-cstep="-1" aria-label="One court fewer">−</button><b id="courtsNum">4</b><span id="courtsWord">courts</span><button type="button" data-cstep="1" aria-label="One court more">+</button></div>
+        </fieldset>
         <fieldset class="modes" id="udOpts"><legend>Round timing</legend>
           <div class="row" style="flex:none">
             <label class="mode"><input type="radio" name="timing" value="untimed" checked><span><b>Untimed</b>Each round ends when every court has a result.</span></label>
@@ -1578,7 +1540,8 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
             <label class="mode"><input type="radio" name="scoring" value="winner"><span><b>Winners only</b>Just tap the team that won. No scores are kept.</span></label>
           </div>
         </fieldset>
-        <fieldset class="modes" id="udRoundsOpts"><legend>Rounds to play</legend><div id="udRoundsBox"></div></fieldset>
+        <fieldset class="modes" id="udRoundsOpts"><legend>Rounds to play</legend><div class="setup-plan" id="udPlan"></div><div id="udRoundsBox"></div></fieldset>
+        <fieldset class="modes" id="udEstOpts" hidden><legend>Estimated time</legend><p class="te-out setup-est" id="estOut" aria-live="polite"></p></fieldset>
         <input type="hidden" id="courtCount">
         <p class="note" id="modeNote"></p>
         <div class="row" style="flex:none;justify-content:flex-start"><button type="submit" class="btn-sun setup-go" id="startGo">Start tournament</button></div>
@@ -1590,7 +1553,13 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     el.querySelector("#udSeconds").value = secs % 60;
     form.scoring.value = settings.udScores === false ? "winner" : "scores";
     form.addEventListener("change", updateSetup);
-    ["udMinutes", "udSeconds"].forEach(id => el.querySelector("#" + id).addEventListener("input", () => { setupTimeTouched = true; }));
+    ["udMinutes", "udSeconds"].forEach(id => el.querySelector("#" + id).addEventListener("input", () => { setupTimeTouched = true; updateSetup(); }));
+    el.querySelector("#udCourtOpts").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-cstep]"); if (b) setCourtCount(setupCourts() + +b.dataset.cstep);
+    });
+    el.querySelector("#udPlan").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-usecourts]"); if (b) setCourtCount(+b.dataset.usecourts);
+    });
     el.querySelector("#udRoundsBox").addEventListener("click", (e) => {
       const b = e.target.closest("[data-sr-step],[data-sr-pick]"); if (!b) return;
       startRoundsTouched = true;
@@ -1625,14 +1594,22 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     if (!form) return false;
     const courts = setupCourts(), qn = waiting(state).length, count = Object.keys(state.players).length;
     $("courtCount").value = courts;
-    $("udMinWrap").hidden = form.timing.value !== "timed";
-    if (!setupTimeTouched && estSecs != null) { $("udMinutes").value = Math.floor(estSecs / 60); $("udSeconds").value = estSecs % 60; }
+    $("courtsNum").textContent = courts; $("courtsWord").textContent = courts === 1 ? "court" : "courts";
+    const timed = form.timing.value === "timed";
+    $("udMinWrap").hidden = !timed;
+    $("udPlan").innerHTML = roundPlanHtml(qn, courts);
     // Rounds picker: suggested rounds (where games come out level) are one tap away; any number 1 to 30 can be picked.
     const sug = suggestedRounds(qn, courts);
-    if (!startRoundsTouched || startRounds == null) startRounds = estRounds != null ? estRounds : (sug.list[0] || 8);
+    if (!startRoundsTouched || startRounds == null) startRounds = sug.list[0] || 8;
     const r = startRounds, uneven = qn >= 4 && sug.cycle > 1 && r % sug.cycle !== 0;
     $("udRoundsBox").innerHTML = `<div class="te-row"><div class="arr-ctl"><button type="button" data-sr-step="-1" aria-label="One round fewer">−</button><b>${r}</b><span>${r === 1 ? "round" : "rounds"}</span><button type="button" data-sr-step="1" aria-label="One round more">+</button></div>${sug.list.length ? `<div class="te-chips" role="group" aria-label="Suggested rounds">${sug.list.map(x => `<button type="button" data-sr-pick="${x}" class="${x === r ? "on" : ""}" aria-pressed="${x === r}">${x}</button>`).join("")}</div>` : ""}</div>
       <p class="note" style="margin-top:6px">${uneven ? `<span class="te-warn">With ${r} rounds, some players will have played one game fewer. Games are level every ${sug.cycle} rounds.</span> ` : ""}After round ${r}, the app asks before playing another round.</p>`;
+    // Time estimate for timed rounds, from the rounds and time per round chosen above.
+    $("udEstOpts").hidden = !timed;
+    if (timed) {
+      const secs = Math.max(10, (parseInt($("udMinutes").value, 10) || 0) * 60 + Math.min(59, parseInt($("udSeconds").value, 10) || 0));
+      $("estOut").innerHTML = timeEstOutHtml(r, secs);
+    }
     const note = $("modeNote"), btn = $("startGo");
     if (qn < 4 || qn !== count) {
       note.textContent = qn < 4 ? `${qn} ${qn === 1 ? "player is" : "players are"} on the player list. Up and down needs at least 4, so add everyone first.` : "Some players are still on court. Wait until every court is free.";
@@ -1640,7 +1617,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     }
     const used = Math.min(courts, Math.floor(qn / 4)), sit = qn - used * 4, cy = udCycle(qn, used * 4);
     const evenTxt = sit ? ` ${sit} sit out each round, taking turns. Everyone has played the same number of games after every ${cy.rounds} rounds (${cy.games} ${cy.games === 1 ? "game" : "games"} each).` : " Everyone plays every round.";
-    note.textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"} (change the courts available in the Round estimator), placed in list order from court 1. Check everyone is in: nobody can be added once it starts.${evenTxt}${courts > used ? ` Only ${used} of ${courts} courts can be filled.` : ""}`;
+    note.textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"}, placed in list order from court 1. Check everyone is in: nobody can be added once it starts.${evenTxt}${courts > used ? ` Only ${used} of ${courts} courts can be filled.` : ""}`;
     btn.disabled = false;
     return true;
   }
@@ -2580,7 +2557,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     $("legend").hidden = tour;
     $("rrPanel").hidden = !tour;
     if (tour) {
-      $("queue").innerHTML = ""; $("nextUp").hidden = true; $("addErr").hidden = true; $("estimator").hidden = true;
+      $("queue").innerHTML = ""; $("nextUp").hidden = true; $("addErr").hidden = true;
       $("queueCount").textContent = `${Object.keys(s.players).length} players · entries closed`;
       $("rrPanel").innerHTML = udLive ? udPanelHtml(s) : rrPanelHtml(s);
       $("rrPanel").querySelectorAll("[data-shuffle]").forEach(b => b.addEventListener("click", () => { b.disabled = true; shuffleUD(); }));
@@ -2591,23 +2568,6 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       }));
       return;
     }
-
-    // round estimator: only before a session starts
-    const est = $("estimator");
-    const aeId = document.activeElement && document.activeElement.id;
-    if (!live && !arranging && (aeId === "estMin" || aeId === "estSec")) {
-      // Someone is typing a round time: leave the estimator alone until they finish.
-    } else if (!live && !arranging) {
-      const courtsNow = settings.courtCount || 4;
-      est.hidden = false;
-      est.innerHTML = `<div class="est-head"><div class="rr-h">Round estimator</div>
-          <div class="arr-ctl">${canWrite ? `<button type="button" data-cstep="-1" aria-label="One court fewer">\u2212</button>` : ""}<b>${courtsNow}</b><span>${courtsNow === 1 ? "court" : "courts"} available</span>${canWrite ? `<button type="button" data-cstep="1" aria-label="One court more">+</button>` : ""}</div></div>
-        ${roundPlanHtml(waiting(s).length, courtsNow)}
-        ${canWrite ? timeEstHtml(waiting(s).length, courtsNow) : ""}`;
-      bindTimeEst(waiting(s).length, courtsNow);
-      est.querySelectorAll("[data-cstep]").forEach(b => b.addEventListener("click", () => setCourtCount(courtsNow + +b.dataset.cstep)));
-      est.querySelectorAll("[data-usecourts]").forEach(b => b.addEventListener("click", () => setCourtCount(+b.dataset.usecourts)));
-    } else est.hidden = true;
 
     // queue
     const q = waiting(s);
