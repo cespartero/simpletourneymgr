@@ -103,6 +103,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .setup-courts .arr-ctl b{font-size:18px}
 .setup-plan button[data-usecourts]{align-self:flex-start;min-height:40px;margin-top:8px}
 .setup-est{margin:0}
+.j-late{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.late-note{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.late-note button{min-height:36px;flex:none}
 .time-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .time-pick .tp-lbl{grid-column:1/-1;font-size:13px;font-weight:600;color:var(--muted)}
 .time-pick input{box-sizing:border-box;width:100%}
@@ -537,7 +540,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       <li>Wait for the admin to start. You'll be placed on a court in list order, starting from court 1.</li>
       <li>Check the board each round to see your court and partner.</li>
     </ol>
-    <p class="hv-note">Entries close once the tournament starts. Make sure everyone has joined first.</p>
+    <p class="hv-note">Unless the admin allowed late entries, entries close once the tournament starts. Make sure everyone has joined first.</p>
   </section>
 
   <section class="hv-card" id="hv-start">
@@ -558,6 +561,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
           <li><b>Winners only</b>: just tap the team that won. No scores are kept.</li>
         </ul>
       </li>
+      <li>Choose whether to <b>allow late entries</b>. If you do, people can still join once the tournament is running.</li>
       <li>Choose the <b>rounds to play</b>. The suggested numbers, where everyone ends on the same number of games, are one tap away, but you can pick any number from 1 to 30. Just above, the app suggests how many rounds to plan so everyone finishes on the same number of games. The round bar then shows, for example, <b>Round 3 of 8</b>.</li>
       <li>Check the summary. It tells you how many courts will be used and, if the numbers don't divide by 4, how many sit out each round.</li>
       <li>Tap <span class="k">Start tournament</span>, then <span class="k">Start round 1</span> once everyone is on court.</li>
@@ -616,7 +620,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       <dt>Allocations</dt>
       <dd>Who is on which court this round, who is sitting out, what happened to each player last round, and how many rounds each player has sat out so far this session (<b>Sit outs</b>).</dd>
       <dt>Stats</dt>
-      <dd>Games played, won, drawn and lost, and win percentage. With scores captured, points won and lost, points difference and average points per game (<b>Avg pts</b>) too.</dd>
+      <dd>Games played, won, drawn and lost, and win percentage. With scores captured, points won and lost, points difference and average points per game (<b>Avg pts</b>) too. Players are ranked by win percentage (a draw counts as half a win), then points difference, then points scored, so late joiners and people who sat out more aren't behind. Anyone who joined late shows the round they joined in.</dd>
       <dt>Streaks</dt>
       <dd>Each player's current streak, best winning run and last 5 results.</dd>
       <dt>History</dt>
@@ -662,7 +666,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     <h2>Common questions</h2>
     <dl>
       <dt>Can someone join once the tournament has started?</dt>
-      <dd>No. Entries close when it starts. End the session and start a new one to add people.</dd>
+      <dd>Only if the admin chose <b>Allow late entries</b> when setting it up. Then anyone can still add their name. They sit out the round that's on and play from the next one: on the bottom court if nobody was sitting out, or in place of someone whose turn it is to sit out. If 4 or more end up sitting out and a court is free, the app opens it as the new bottom court. The admin can tap <span class="k">Close entries</span> at any time. Otherwise, entries close when it starts.</dd>
       <dt>Why can't I start the next round?</dt>
       <dd>Every court needs a result first. Check for a court with no score, or a draw where nobody has been chosen to move up.</dd>
       <dt>I forgot the admin PIN.</dt>
@@ -869,18 +873,36 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       L0.forEach(id => { if (s.players[id]) s.players[id].last = { won: false, from: c.num, draw: dr, ms }; });
       [W0, L0].forEach(T => T.forEach(id => { if (s.players[id]) s.players[id].lastPartner = T.find(x => x !== id) || null; }));
     }
-    ud.sitting.forEach(id => { if (s.players[id]) s.players[id].last = { sat: true }; });
+    ud.sitting.forEach(id => { if (s.players[id]) s.players[id].last = s.players[id].late ? { joined: true } : { sat: true }; });
     for (const c of courts) {
       const W = c.done.winner === "A" ? c.teamA : c.teamB, L = c.done.winner === "A" ? c.teamB : c.teamA;
       W.forEach(id => { info[id] = { won: true, from: c.num, partner: W.find(x => x !== id) }; incoming[Math.max(1, c.num - 1)].push(id); });
       L.forEach(id => { info[id] = { won: false, from: c.num, partner: L.find(x => x !== id) }; incoming[Math.min(per, c.num + 1)].push(id); });
     }
+    const P = s.players;
+    // Late entries: once 4 or more are sitting out and a court is free, open it as the new bottom court.
+    // Late joiners go on it first, then whoever has sat out most.
+    let opened = null;
+    if (ud.sitting.length >= 4 && per < s.session.courts.length) {
+      const four = shuf(ud.sitting.slice()).sort((a, b) => (!!(P[b] && P[b].late) - !!(P[a] && P[a].late)) || ((ud.sits[b] || 0) - (ud.sits[a] || 0))).slice(0, 4);
+      four.forEach(id => { info[id] = { won: false, from: null, partner: null }; });
+      ud.sitting = ud.sitting.filter(id => !four.includes(id));
+      opened = { court: s.session.courts.find(c => c.num === per + 1), four };
+    }
     if (ud.sitting.length) {
       // Next sitters: whoever has sat out least, preferring people who just played over people who just sat.
-      const played = courts.flatMap(c => [...c.teamA, ...c.teamB]), sat = new Set(ud.sitting);
-      const next = shuf([...played, ...ud.sitting]).sort((a, b) => ((ud.sits[a] || 0) - (ud.sits[b] || 0)) || (sat.has(a) - sat.has(b))).slice(0, ud.sitting.length);
+      // Late joiners always play the round after they join. One who joined while nobody was sitting out
+      // takes a place on the bottom court, and someone from that court sits out instead.
+      const played = courts.flatMap(c => [...c.teamA, ...c.teamB]), sat = new Set(ud.sitting), n = ud.sitting.length;
+      const rank = (a, b) => ((ud.sits[a] || 0) - (ud.sits[b] || 0)) || (sat.has(a) - sat.has(b));
+      const must = ud.sitting.filter(id => P[id] && P[id].late).slice(0, played.length);
+      const bottom = must.filter(id => P[id].late === "bottom");
+      const forced = shuf(incoming[per].slice()).sort(rank).slice(0, bottom.length);
+      const next = [...forced, ...shuf([...played, ...ud.sitting]).filter(id => !must.includes(id) && !forced.includes(id)).sort(rank)].slice(0, n);
+      for (let i = must.length - 1; next.length < n && i >= 0; i--) if (!next.includes(must[i])) next.push(must[i]);
       const nextSet = new Set(next);
-      const leaving = played.filter(id => nextSet.has(id)), back = shuf(ud.sitting.filter(id => !nextSet.has(id)));
+      const leaving = [...forced, ...played.filter(id => nextSet.has(id) && !forced.includes(id))];
+      const back = [...bottom.filter(id => !nextSet.has(id)), ...shuf(ud.sitting.filter(id => !nextSet.has(id) && !bottom.includes(id)))];
       leaving.forEach((id, i) => {
         const r = back[i];
         for (const arr of incoming) { const j = arr.indexOf(id); if (j >= 0) { arr[j] = r; info[r] = { won: info[id].won, from: null, partner: null }; } }
@@ -892,6 +914,13 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       const [A, B] = bestTeams(incoming[c.num], info);
       c.teamA = A; c.teamB = B; c.startedAt = null; delete c.done;
     }
+    if (opened && opened.court) {
+      const [A, B] = bestTeams(opened.four, info), c = opened.court;
+      c.teamA = A; c.teamB = B; c.startedAt = null; delete c.done;
+      ud.per = per + 1;
+    }
+    // Late joiners who are now on court are just players from here on.
+    Object.keys(P).forEach(id => { if (P[id].late && !ud.sitting.includes(id)) delete P[id].late; });
     ud.round += 1; ud.state = "ready"; ud.startAt = null; ud.endAt = null;
   }
   const gcd = (a, b) => b ? gcd(b, a % b) : a;
@@ -1033,16 +1062,33 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     name = name.replace(/\s+/g, " ").trim();
     if (!name) return;
     const key = name.toLowerCase();
-    let dup = false, closed = false;
+    let dup = false, closed = false, late = false;
     const ok = await mutate((s, now) => {
-      if (isTour(s)) { closed = true; return false; }
+      if (isTour(s) && !(isUD(s) && s.session.ud.late)) { closed = true; return false; }
       if (Object.values(s.players).some(p => p.name.toLowerCase() === key)) { dup = true; return false; }
       const id = "p" + now.toString(36) + Math.random().toString(36).slice(2, 6);
+      if (isUD(s)) { udJoin(s, id, name, now); late = true; return; }
       s.players[id] = { name, status: "new", since: now, games: 0, wins: 0 };
     });
     if (closed) { err.textContent = "Entries are closed while the tournament is running."; err.hidden = false; return; }
     if (dup) { err.textContent = `${name} is already on the board. Add a surname initial to tell people apart.`; err.hidden = false; return; }
-    if (ok) { $("nameInput").value = ""; toast(`${name} joined the player list`); }
+    if (ok) { $("nameInput").value = ""; toast(late ? `${name} joined. They play from the next round.` : `${name} joined the player list`); }
+  }
+  // A late joiner sits out the round in progress and plays from the next one: on the bottom court if
+  // nobody was sitting out when they joined, otherwise in place of someone whose turn it is to sit out.
+  function udJoin(s, id, name, now) {
+    const ud = s.session.ud;
+    ud.sits = ud.sits || {};
+    const base = Math.max(0, ...Object.keys(s.players).map(k => ud.sits[k] || 0));
+    s.players[id] = { name, status: "ud", since: now, games: 0, wins: 0, pf: 0, pa: 0, top: 0, joined: ud.round, sitBase: base, late: ud.sitting.length ? "pool" : "bottom" };
+    ud.sits[id] = base;
+    ud.sitting.push(id);
+  }
+  async function closeLateEntries() {
+    requirePin("Enter the admin PIN to close late entries.", async () => {
+      const ok = await mutate((s) => { if (!isUD(s) || !s.session.ud.late) return false; s.session.ud.late = false; });
+      if (ok) toast("Late entries closed");
+    });
   }
 
   async function courtFree(num, winner, sa, sb) {
@@ -1161,7 +1207,9 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       s.players = la.prev.players || {};
       // Keep anyone who joined after the result was entered.
       for (const [id, p] of Object.entries(cur)) {
-        if (!(id in s.players)) { const q = { ...p, status: "new" }; delete q.court; s.players[id] = q; }
+        if (id in s.players) continue;
+        if (isUD(s)) { udJoin(s, id, p.name, p.since || now); continue; }
+        const q = { ...p, status: "new" }; delete q.court; s.players[id] = q;
       }
       delete s.lastAction;
     });
@@ -1441,7 +1489,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     });
     if (ok) toast(`${label} started`);
   }
-  async function startUpDown(n, timed, seconds, scores) {
+  async function startUpDown(n, timed, seconds, scores, late) {
     const ids = waiting(state);
     if (ids.length < 4) return toast("Up and down needs at least 4 players in the player list.");
     let changed = false;
@@ -1453,6 +1501,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       udInitial(s, ids, timed, seconds);
       if (pendingTarget) s.session.ud.target = pendingTarget;
       s.session.ud.scores = scores !== false;
+      if (late) s.session.ud.late = true;
     });
     if (changed) toast("Someone joined or left while the courts were being set. Start again.");
     else if (ok) toast("Up and down started. Press Start round 1 when everyone is on court.");
@@ -1540,6 +1589,12 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
             <label class="mode"><input type="radio" name="scoring" value="winner"><span><b>Winners only</b>Just tap the team that won. No scores are kept.</span></label>
           </div>
         </fieldset>
+        <fieldset class="modes" id="udLateOpts"><legend>Late entries</legend>
+          <div class="row" style="flex:none">
+            <label class="mode"><input type="radio" name="late" value="closed"><span><b>Closed</b>Entries close when the tournament starts.</span></label>
+            <label class="mode"><input type="radio" name="late" value="open"><span><b>Allow late entries</b>Players can join while it's running. They start on the bottom court, or take a turn from the sit-outs if people are sitting out.</span></label>
+          </div>
+        </fieldset>
         <fieldset class="modes" id="udRoundsOpts"><legend>Rounds to play</legend><div class="setup-plan" id="udPlan"></div><div id="udRoundsBox"></div></fieldset>
         <fieldset class="modes" id="udEstOpts" hidden><legend>Estimated time</legend><p class="te-out setup-est" id="estOut" aria-live="polite"></p></fieldset>
         <input type="hidden" id="courtCount">
@@ -1552,6 +1607,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     el.querySelector("#udMinutes").value = Math.floor(secs / 60);
     el.querySelector("#udSeconds").value = secs % 60;
     form.scoring.value = settings.udScores === false ? "winner" : "scores";
+    form.late.value = settings.udLate ? "open" : "closed";
     form.addEventListener("change", updateSetup);
     ["udMinutes", "udSeconds"].forEach(id => el.querySelector("#" + id).addEventListener("input", () => { setupTimeTouched = true; updateSetup(); }));
     el.querySelector("#udCourtOpts").addEventListener("click", (e) => {
@@ -1574,13 +1630,14 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
         const n = setupCourts(), timed = form.timing.value === "timed";
         pendingTarget = startRounds;
         const seconds = Math.max(10, Math.min(90 * 60, (parseInt($("udMinutes").value, 10) || 0) * 60 + Math.min(59, parseInt($("udSeconds").value, 10) || 0))) || 720;
-        const scores = form.scoring.value !== "winner";
+        const scores = form.scoring.value !== "winner", late = form.late.value === "open";
         const patch = {};
+        if (late !== !!settings.udLate) patch.udLate = late;
         if (timed && seconds !== settings.udSeconds) patch.udSeconds = seconds;
         if (scores !== (settings.udScores !== false)) patch.udScores = scores;
         if (Object.keys(patch).length) { try { await settingsRef.set({ ...settings, ...patch }); } catch {} }
         startRoundsTouched = false; startRounds = null; setupTimeTouched = false;
-        startUpDown(n, timed, seconds, scores);
+        startUpDown(n, timed, seconds, scores, late);
       };
       if (isAdmin()) go(); else requirePin("Enter the admin PIN to start the tournament.", go);
     });
@@ -1617,7 +1674,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     }
     const used = Math.min(courts, Math.floor(qn / 4)), sit = qn - used * 4, cy = udCycle(qn, used * 4);
     const evenTxt = sit ? ` ${sit} sit out each round, taking turns. Everyone has played the same number of games after every ${cy.rounds} rounds (${cy.games} ${cy.games === 1 ? "game" : "games"} each).` : " Everyone plays every round.";
-    note.textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"}, placed in list order from court 1. Check everyone is in: nobody can be added once it starts.${evenTxt}${courts > used ? ` Only ${used} of ${courts} courts can be filled.` : ""}`;
+    note.textContent = `${qn} players on ${used} ${used === 1 ? "court" : "courts"}, placed in list order from court 1. ${form.late.value === "open" ? "Late entries are allowed, so people can still join once it starts." : "Check everyone is in: nobody can be added once it starts."}${evenTxt}${courts > used ? ` Only ${used} of ${courts} courts can be filled.` : ""}`;
     btn.disabled = false;
     return true;
   }
@@ -1668,7 +1725,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
           const ok = await mutate((s, now) => {
             if (s.session) {
               const rr = isRR(s), ud = isUD(s);
-              const rows = Object.values(s.players).map(p => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, ...(ud ? { top: p.top || 0 } : {}) }));
+              const rows = Object.values(s.players).map(p => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, ...(ud ? { top: p.top || 0 } : {}), ...(p.joined ? { joined: p.joined } : {}) }));
               s.lastSummary = { mode: rr ? "rr" : ud ? "ud" : "std", startedAt: s.session.startedAt, endedAt: now, courts: s.session.courts.length, rows };
               if (ud) Object.assign(s.lastSummary, { roundsDone: s.session.ud.completed || 0, scored: rows.some(r => r.pf || r.pa), history: s.session.history || [], ...(s.session.ud.target ? { planned: s.session.ud.target } : {}) });
               if (rr) {
@@ -2033,8 +2090,14 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     });
   }
 
+  // Up and down: win % first, so late joiners and people who sat out more aren't behind on games played.
+  const winPct = (r) => r.games ? (r.wins + (r.draws || 0) / 2) / r.games : -1;
   function rankRows(sum) {
-    if (sum.mode === "rr" || sum.mode === "ud") {
+    if (sum.mode === "ud") {
+      const d = (r) => (r.pf || 0) - (r.pa || 0);
+      return sum.rows.slice().sort((a, b) => winPct(b) - winPct(a) || d(b) - d(a) || (b.pf || 0) - (a.pf || 0) || b.games - a.games || a.name.localeCompare(b.name));
+    }
+    if (sum.mode === "rr") {
       const d = (r) => (r.pf || 0) - (r.pa || 0);
       const sc = (r) => r.wins + (r.draws || 0) / 2;
       return sum.rows.slice().sort((a, b) => sc(b) - sc(a) || d(b) - d(a) || (b.pf || 0) - (a.pf || 0) || a.name.localeCompare(b.name));
@@ -2056,7 +2119,8 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
         return `<tr><td>${m.r}</td><td>${m.c}</td><td class="hist-t${m.d ? "" : " hist-w"}">${esc(W.join(" & "))}${m.d ? '<div class="lr-time">Moved up on a draw</div>' : ""}</td><td class="hist-s">${m.d ? `Draw${score ? " " + score : ""}` : score || "Won"}</td><td class="hist-t">${esc(L.join(" & "))}</td></tr>`;
       }).join("")}</tbody>`;
   }
-  const pct = (r) => r.games ? Math.round(100 * r.wins / r.games) + "%" : "–";
+  const pct = (r) => r.games ? Math.round(100 * winPct(r)) + "%" : "–";
+  const lateTag = (r) => r.joined ? `<span class="j-late">Joined in round ${r.joined}</span>` : "";
   function sumDate(sum) {
     const d = new Date(sum.startedAt);
     return d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
@@ -2075,9 +2139,9 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
         <div class="row" style="flex:none"><button id="copyRes">Copy results</button></div></div>
       <div class="tbl-wrap"><table class="res">
         <thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${pts ? "<th>Points</th><th>+/−</th><th title=\"Average points scored per game\">Avg pts</th>" : ""}${top ? "<th>Court 1 wins</th>" : ""}<th>Win %</th></tr></thead>
-        <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws || 0}</td>` : ""}<td>${lostOf(r)}</td>${pts ? `<td>${r.pf || 0}–${r.pa || 0}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}${top ? `<td>${r.top || 0}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>
+        <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}${lateTag(r)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws || 0}</td>` : ""}<td>${lostOf(r)}</td>${pts ? `<td>${r.pf || 0}–${r.pa || 0}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}${top ? `<td>${r.top || 0}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>
       </table></div>
-      ${rr ? `<p class="note">Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${pts ? ", then points difference, then points scored" : ""}.</p>` : ""}
+      ${ud ? `<p class="note">Ranked by win %${dr ? " (a draw counts as half a win)" : ""}${pts ? ", then points difference, then points scored" : ""}.</p>` : rr ? `<p class="note">Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${pts ? ", then points difference, then points scored" : ""}.</p>` : ""}
       ${sum.history && sum.history.length ? `<details class="hist-wrap"><summary>Match history (${sum.history.length} ${sum.history.length === 1 ? "match" : "matches"})</summary><div class="tbl-wrap"><table class="res small">${histTableHtml(sum.history)}</table></div></details>` : ""}
       <textarea id="copyFallback" readonly hidden></textarea>
     </div>`;
@@ -2244,6 +2308,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       const move = from ? `Ct ${from} \u2192 Ct ${r.court}` : `to Ct ${r.court}`;
       return `${before ? before + ", " : ""}${shuf} ${move}`;
     }
+    if (L && L.joined || r.joined && !L) return r.court ? `<span class="status s-new">Joined late</span> starts on Ct ${r.court}` : '<span class="status s-sit">Joined late</span> plays next round';
     if (!L) return '<span class="lr-first">First game</span>';
     if (L.sat) return r.court ? `<span class="status s-sit">Sat out</span> back on Ct ${r.court}` : '<span class="status s-sit">Sat out</span>';
     const res = L.draw ? '<span class="lr-draw">Drew</span>' : L.won ? '<span class="lr-won">Won</span>' : '<span class="lr-lost">Lost</span>';
@@ -2288,10 +2353,11 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     let html = callout + `<div class="rr-block"><div class="rr-h">${udRoundOf(s)} \u00b7 ${ud.state === "ready" ? "set, not started" : "on court"}</div>
       <div class="note">${ud.sitting.length ? `Sitting out this round: <strong>${ud.sitting.map(nm).join(", ")}</strong>` : "Everyone is playing this round."}</div>
       <div class="note">Winners move one court toward court 1. Losers move one court away. Partners change every round.</div>
+      ${ud.late ? `<div class="note late-note"><span><strong>Late entries are open.</strong> New players sit out the round on now and play from the next one.</span>${canWrite ? `<button type="button" data-closelate>Close entries</button>` : ""}</div>` : ""}
       ${(() => { const cy = udCycle(Object.keys(s.players).length, ud.per * 4); return cy.sit ? `<div class="note">With ${cy.sit} sitting out each round, everyone has played the same number of games every <strong>${cy.rounds} rounds</strong> (rounds ${cy.rounds}, ${cy.rounds * 2}, ${cy.rounds * 3} and so on). Next: <strong>after round ${udLevel(s).next}</strong>.</div>` : `<div class="note">Everyone plays every round.</div>`; })()}</div>`;
     const where = {};
     s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
-    const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, pf: p.pf || 0, pa: p.pa || 0, top: p.top || 0, draws: p.draws || 0, court: where[id] || null, last: p.last || null, hist: p.hist || [], c1: p.c1 || 0, so: Math.max(0, ((ud.sits && ud.sits[id]) || 0) - ((ud.sitting || []).includes(id) ? 1 : 0)) })) });
+    const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ name: p.name, games: p.games || 0, wins: p.wins || 0, pf: p.pf || 0, pa: p.pa || 0, top: p.top || 0, draws: p.draws || 0, joined: p.joined || 0, court: where[id] || null, last: p.last || null, hist: p.hist || [], c1: p.c1 || 0, so: Math.max(0, ((ud.sits && ud.sits[id]) || 0) - (p.sitBase || 0) - ((ud.sitting || []).includes(id) ? 1 : 0)) })) });
     const page = ["stats", "streaks", "history"].includes(standingsPage) ? standingsPage : "alloc";
     const scoredUD = udScored(s);
     const tabs = `<div class="sp-tabs" role="tablist" aria-label="Standings pages">
@@ -2302,9 +2368,9 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       </div>`;
     const body = page === "history" ? histTableHtml(s.session.history) : page === "streaks" ? streaksHtml(rows) : page === "alloc"
       ? `<thead><tr><th>#</th><th>Player</th><th>Round ${ud.round}</th><th>Last round</th><th>Sit outs</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td class="rd">${r.court ? `<span class="status s-new">Allocated · Ct ${r.court}</span>` : `<span class="status s-sit">Sit out</span>`}</td><td class="lr">${lastTxt(r)}</td><td>${r.so}</td></tr>`).join("")}</tbody>`
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}${lateTag(r)}</td><td class="rd">${r.court ? `<span class="status s-new">Allocated · Ct ${r.court}</span>` : `<span class="status s-sit">Sit out</span>`}</td><td class="lr">${lastTxt(r)}</td><td>${r.so}</td></tr>`).join("")}</tbody>`
       : `<thead><tr><th>#</th><th>Player</th><th>Played</th><th>Won</th>${rows.some(r => r.draws) ? "<th>Drawn</th>" : ""}<th>Lost</th>${scoredUD ? "<th>Pts won</th><th>Pts lost</th><th>+/−</th><th title=\"Average points scored per game\">Avg pts</th>" : ""}<th>Win %</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td>${r.games}</td><td>${r.wins}</td>${rows.some(x => x.draws) ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scoredUD ? `<td>${r.pf}</td><td>${r.pa}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>`;
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td class="rn">${esc(r.name)}${lateTag(r)}</td><td>${r.games}</td><td>${r.wins}</td>${rows.some(x => x.draws) ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scoredUD ? `<td>${r.pf}</td><td>${r.pa}</td><td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td></tr>`).join("")}</tbody>`;
     html += `<div class="rr-block"><div class="sp-head"><div class="rr-h">Standings</div>${tabs}</div><div class="tbl-wrap"><table class="res small">
       ${body}
     </table></div></div>`;
@@ -2336,13 +2402,13 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       : head("No tournament is running. Standings fill in as results go in once a tournament starts.");
     const ud = s.session.ud, scored = typeof udScored === "function" ? udScored(s) : true;
     const where = {}; s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
-    const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ id, name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, hist: p.hist || [] })) });
+    const rows = rankRows({ mode: "ud", rows: Object.entries(s.players).map(([id, p]) => ({ id, name: p.name, games: p.games || 0, wins: p.wins || 0, draws: p.draws || 0, pf: p.pf || 0, pa: p.pa || 0, joined: p.joined || 0, hist: p.hist || [] })) });
     const dr = rows.some(r => r.draws), played = rows.filter(r => r.games).length;
     const now = (r) => where[r.id] ? `<span class="status s-new">Court ${where[r.id]}</span>` : `<span class="status s-sit">Sitting out</span>`;
     const form = (r) => r.hist.slice(-5).map(x => `<span class="fm fm-${x}" title="${x === "W" ? "Won" : x === "L" ? "Lost" : "Drew"}">${x}</span>`).join("") || "–";
-    return head(`${udRoundOf(s)} · ${ud.completed} ${ud.completed === 1 ? "round" : "rounds"} played · ${played} of ${rows.length} players have finished a game. Updates as each result goes in. Ranked by wins${dr ? " (a draw counts as half a win)" : ""}${scored ? ", then points difference, then points scored" : ""}.`)
+    return head(`${udRoundOf(s)} · ${ud.completed} ${ud.completed === 1 ? "round" : "rounds"} played · ${played} of ${rows.length} players have finished a game. Updates as each result goes in. Ranked by win %${dr ? " (a draw counts as half a win)" : ""}${scored ? ", then points difference, then points scored" : ""}.`)
       + `<div class="panel"><div class="tbl-wrap"><table class="res stand-tbl"><thead><tr><th>#</th><th>Player</th><th style="text-align:left">${ud.state === "ready" ? "Next round" : "This round"}</th><th>Played</th><th>Won</th>${dr ? "<th>Drawn</th>" : ""}<th>Lost</th>${scored ? '<th>+/−</th><th title="Average points scored per game">Avg pts</th>' : ""}<th>Win %</th><th style="text-align:left">Last 5</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}</td><td style="text-align:left">${now(r)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scored ? `<td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td><td class="fm-cell">${form(r)}</td></tr>`).join("")}</tbody></table></div></div>`;
+      <tbody>${rows.map((r, i) => `<tr${i === 0 && r.wins ? ' class="top"' : ""}><td>${i + 1}</td><td class="rn">${esc(r.name)}${lateTag(r)}</td><td style="text-align:left">${now(r)}</td><td>${r.games}</td><td>${r.wins}</td>${dr ? `<td>${r.draws}</td>` : ""}<td>${lostOf(r)}</td>${scored ? `<td>${diffTxt(r)}</td><td>${avgPts(r)}</td>` : ""}<td>${pct(r)}</td><td class="fm-cell">${form(r)}</td></tr>`).join("")}</tbody></table></div></div>`;
   }
   // Match history view: every recorded match this session, or from the last session.
   function bigHistHtml(s) {
@@ -2362,7 +2428,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
       : "Waiting for the admin to start tonight's session";
     setAdminLabel();
     $("readonlyBanner").hidden = canWrite || !connected;
-    $("addForm").hidden = !canWrite || tour;
+    $("addForm").hidden = !canWrite || (tour && !(udLive && s.session.ud.late));
     $("endBtn").hidden = !(live && canWrite);
     const ub = $("undoBar"), la = s.lastAction;
     if (live && canWrite && la && !arranging) {
@@ -2558,8 +2624,9 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     $("rrPanel").hidden = !tour;
     if (tour) {
       $("queue").innerHTML = ""; $("nextUp").hidden = true; $("addErr").hidden = true;
-      $("queueCount").textContent = `${Object.keys(s.players).length} players · entries closed`;
+      $("queueCount").textContent = `${Object.keys(s.players).length} players · ${udLive && s.session.ud.late ? "late entries open" : "entries closed"}`;
       $("rrPanel").innerHTML = udLive ? udPanelHtml(s) : rrPanelHtml(s);
+      $("rrPanel").querySelectorAll("[data-closelate]").forEach(b => b.addEventListener("click", closeLateEntries));
       $("rrPanel").querySelectorAll("[data-shuffle]").forEach(b => b.addEventListener("click", () => { b.disabled = true; shuffleUD(); }));
       $("rrPanel").querySelectorAll("[data-sp]").forEach(b => b.addEventListener("click", () => {
         standingsPage = b.dataset.sp;
