@@ -666,7 +666,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     <h2>Common questions</h2>
     <dl>
       <dt>Can someone join once the tournament has started?</dt>
-      <dd>Only if the admin chose <b>Allow late entries</b> when setting it up. Then anyone can still add their name. They sit out the round that's on and play from the next one: on the bottom court if nobody was sitting out, or in place of someone whose turn it is to sit out. If 4 or more end up sitting out and a court is free, the app opens it as the new bottom court. The admin can tap <span class="k">Close entries</span> at any time. Otherwise, entries close when it starts.</dd>
+      <dd>Only if the admin chose <b>Allow late entries</b> when setting it up. Then anyone can still add their name. They go into the next round to start, or wait for the current round to finish if one is being played. If 4 or more are waiting and a court is free, it opens as the new bottom court. Otherwise they start on the bottom court if nobody was sitting out, or take the place of someone whose turn it is to sit out. The admin can tap <span class="k">Close entries</span> at any time. Otherwise, entries close when it starts.</dd>
       <dt>Why can't I start the next round?</dt>
       <dd>Every court needs a result first. Check for a court with no score, or a draw where nobody has been chosen to move up.</dd>
       <dt>I forgot the admin PIN.</dt>
@@ -1062,17 +1062,17 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     name = name.replace(/\s+/g, " ").trim();
     if (!name) return;
     const key = name.toLowerCase();
-    let dup = false, closed = false, late = false;
+    let dup = false, closed = false, late = false, onCourt = null;
     const ok = await mutate((s, now) => {
       if (isTour(s) && !(isUD(s) && s.session.ud.late)) { closed = true; return false; }
       if (Object.values(s.players).some(p => p.name.toLowerCase() === key)) { dup = true; return false; }
       const id = "p" + now.toString(36) + Math.random().toString(36).slice(2, 6);
-      if (isUD(s)) { udJoin(s, id, name, now); late = true; return; }
+      if (isUD(s)) { onCourt = udJoin(s, id, name, now); late = s.session.ud.state === "ready" ? "set" : "playing"; return; }
       s.players[id] = { name, status: "new", since: now, games: 0, wins: 0 };
     });
     if (closed) { err.textContent = "Entries are closed while the tournament is running."; err.hidden = false; return; }
     if (dup) { err.textContent = `${name} is already on the board. Add a surname initial to tell people apart.`; err.hidden = false; return; }
-    if (ok) { $("nameInput").value = ""; toast(late ? `${name} joined. They play from the next round.` : `${name} joined the player list`); }
+    if (ok) { $("nameInput").value = ""; toast(!late ? `${name} joined the player list` : onCourt ? `${name} joined and is on court ${onCourt} this round` : late === "playing" ? `${name} joined. They play from the next round.` : `${name} joined and sits out this round`); }
   }
   // A late joiner sits out the round in progress and plays from the next one: on the bottom court if
   // nobody was sitting out when they joined, otherwise in place of someone whose turn it is to sit out.
@@ -1083,6 +1083,33 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     s.players[id] = { name, status: "ud", since: now, games: 0, wins: 0, pf: 0, pa: 0, top: 0, joined: ud.round, sitBase: base, late: ud.sitting.length ? "pool" : "bottom" };
     ud.sits[id] = base;
     ud.sitting.push(id);
+    if (ud.state === "ready") udPlaceLate(s);
+    return s.session.courts.find(c => c.teamA && (c.teamA.includes(id) || c.teamB.includes(id)))?.num || null;
+  }
+  // Between rounds the next round is already set but not started, so late joiners go straight into it.
+  // With 4 or more sitting out and a court free, that court opens as the new bottom court. Otherwise each
+  // late joiner takes a place: on the bottom court if nobody was sitting out when they joined, or from
+  // whoever is next due to sit out.
+  function udPlaceLate(s) {
+    const ud = s.session.ud, P = s.players, rank = (a, b) => (ud.sits[a] || 0) - (ud.sits[b] || 0);
+    const free = s.session.courts.find(c => c.num === ud.per + 1 && !c.teamA);
+    if (free && ud.sitting.length >= 4) {
+      const four = shuf(ud.sitting.slice()).sort((a, b) => (!!(P[b] && P[b].late) - !!(P[a] && P[a].late)) || rank(b, a)).slice(0, 4);
+      const info = {}; four.forEach(x => { info[x] = { won: false, from: null, partner: (P[x] && P[x].lastPartner) || null }; });
+      const [A, B] = bestTeams(four, info);
+      free.teamA = A; free.teamB = B; free.startedAt = null; delete free.done;
+      ud.sitting = ud.sitting.filter(x => !four.includes(x)); ud.per += 1;
+    }
+    const courts = s.session.courts.filter(c => c.teamA), placed = new Set();
+    for (const j of ud.sitting.filter(x => P[x] && P[x].late)) {
+      const from = P[j].late === "bottom" ? courts.filter(c => c.num === ud.per) : courts;
+      const out = shuf(from.flatMap(c => [...c.teamA, ...c.teamB]).filter(x => !placed.has(x) && !(P[x] && P[x].joined && !P[x].games))).sort(rank)[0];
+      if (!out) continue;
+      const c = courts.find(c => c.teamA.includes(out) || c.teamB.includes(out)), T = c.teamA.includes(out) ? c.teamA : c.teamB;
+      T[T.indexOf(out)] = j; placed.add(j);
+      ud.sitting = [...ud.sitting.filter(x => x !== j), out]; ud.sits[out] = (ud.sits[out] || 0) + 1;
+    }
+    Object.keys(P).forEach(x => { if (P[x].late && !ud.sitting.includes(x)) delete P[x].late; });
   }
   async function closeLateEntries() {
     requirePin("Enter the admin PIN to close late entries.", async () => {
@@ -1592,7 +1619,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
         <fieldset class="modes" id="udLateOpts"><legend>Late entries</legend>
           <div class="row" style="flex:none">
             <label class="mode"><input type="radio" name="late" value="closed"><span><b>Closed</b>Entries close when the tournament starts.</span></label>
-            <label class="mode"><input type="radio" name="late" value="open"><span><b>Allow late entries</b>Players can join while it's running. They start on the bottom court, or take a turn from the sit-outs if people are sitting out.</span></label>
+            <label class="mode"><input type="radio" name="late" value="open"><span><b>Allow late entries</b>Players can join while it's running and go into the next round. A free court opens once 4 are waiting. Otherwise they start on the bottom court, or take a turn from the sit-outs.</span></label>
           </div>
         </fieldset>
         <fieldset class="modes" id="udRoundsOpts"><legend>Rounds to play</legend><div class="setup-plan" id="udPlan"></div><div id="udRoundsBox"></div></fieldset>
@@ -2353,7 +2380,7 @@ body.show-help>.wrap,body.show-help #modalRoot{display:none!important}
     let html = callout + `<div class="rr-block"><div class="rr-h">${udRoundOf(s)} \u00b7 ${ud.state === "ready" ? "set, not started" : "on court"}</div>
       <div class="note">${ud.sitting.length ? `Sitting out this round: <strong>${ud.sitting.map(nm).join(", ")}</strong>` : "Everyone is playing this round."}</div>
       <div class="note">Winners move one court toward court 1. Losers move one court away. Partners change every round.</div>
-      ${ud.late ? `<div class="note late-note"><span><strong>Late entries are open.</strong> New players sit out the round on now and play from the next one.</span>${canWrite ? `<button type="button" data-closelate>Close entries</button>` : ""}</div>` : ""}
+      ${ud.late ? `<div class="note late-note"><span><strong>Late entries are open.</strong> New players go into the next round to start. If a round is being played, they wait for it to finish.</span>${canWrite ? `<button type="button" data-closelate>Close entries</button>` : ""}</div>` : ""}
       ${(() => { const cy = udCycle(Object.keys(s.players).length, ud.per * 4); return cy.sit ? `<div class="note">With ${cy.sit} sitting out each round, everyone has played the same number of games every <strong>${cy.rounds} rounds</strong> (rounds ${cy.rounds}, ${cy.rounds * 2}, ${cy.rounds * 3} and so on). Next: <strong>after round ${udLevel(s).next}</strong>.</div>` : `<div class="note">Everyone plays every round.</div>`; })()}</div>`;
     const where = {};
     s.session.courts.forEach(c => { if (c.teamA) [...c.teamA, ...c.teamB].forEach(id => where[id] = c.num); });
